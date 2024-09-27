@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flix</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/cards.css">
+    <script src="scripts/passcode.js"></script>
+    <script src="https://kit.fontawesome.com/7183df4a39.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <div class="container">
+
+        <header>
+            <h1>Flix</h1>
+            <div id="search-container">
+              <div id="search-wrapper">
+                <input type="text" id="search-bar" placeholder="Search...">
+                <i class="fas fa-search search-icon"></i>
+              </div>
+            </div>
+            <div id="bookmark-container">
+              <i class="fas fa-bookmark icon" onclick="location.href='saved.html';"></i>
+            </div>
+          </header>
+          
+        
+    <div id="featured-container">
+        <div id="featured-show">
+            <div id="poster-container">
+                <button id="play-button"><i class="fas fa-play"></i></button>
+            </div>
+            <h2 id="featured-title"></h2>
+            <div id="featured-rating">
+                <i class="fas fa-star"></i>
+                <span id="featured-rating-value"></span>
+                <span id="featured-popularity"></span>
+            </div>
+            <p id="featured-description"></p>
+        </div>
+        <div id="trending-list">
+            <h2>Trending TV Shows</h2>
+            <div id="trending-tv-list"></div>
+        </div>
+    </div>
+    <main>
+        <div class="selector">
+            <div id="slider">
+                <input type="radio" name="slider" id="movies-selector" checked>
+                <input type="radio" name="slider" id="tv-selector">
+                <label for="movies-selector" class="slide movies-slide">Movies</label>
+                <label for="tv-selector" class="slide tv-slide">TV Shows</label>
+                <div class="slider-bar"></div>
+            </div>
+        </div>
+        <section id="movies-section">
+            <h2>Now Playing Movies</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('now-playing-movies')">&lt;</button>
+                <div class="scroll-container" id="now-playing-movies"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('now-playing-movies')">&gt;</button>
+            </div>
+
+            <h2>Popular Movies</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('popular-movies')">&lt;</button>
+                <div class="scroll-container" id="popular-movies"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('popular-movies')">&gt;</button>
+            </div>
+
+            <h2>Top Rated Movies</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('top-rated-movies')">&lt;</button>
+                <div class="scroll-container" id="top-rated-movies"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('top-rated-movies')">&gt;</button>
+            </div>
+        </section>
+        <section id="tv-shows-section" class="hidden">
+            <h2>On The Air</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('on-the-air')">&lt;</button>
+                <div class="scroll-container" id="on-the-air"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('on-the-air')">&gt;</button>
+            </div>
+
+            <h2>Popular TV Shows</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('popular-tv')">&lt;</button>
+                <div class="scroll-container" id="popular-tv"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('popular-tv')">&gt;</button>
+            </div>
+
+            <h2>Top Rated TV Shows</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('top-rated-tv')">&lt;</button>
+                <div class="scroll-container" id="top-rated-tv"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('top-rated-tv')">&gt;</button>
+            </div>
+        </section>
+        <section id="search-results" class="hidden">
+            <h2>Search Results</h2>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('search-results-container')">&lt;</button>
+                <div class="scroll-container" id="search-results-container"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('search-results-container')">&gt;</button>
+            </div>
+        </section>
+    </div>
+    </main>
+    <script type="module" src="scripts/script.js" defer></script>
+</body>
+
+</html>

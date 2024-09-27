@@ -1,0 +1,379 @@
+/* General reset and body styling */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+
+/* Background styling */
+#background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(15px);
+    z-index: -1;
+}
+
+/* Back button styling */
+#back-button {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-size: 1.2em;
+    padding: 10px 20px;
+    cursor: pointer;
+    z-index: 2;
+    transition: background-color 0.3s;
+}
+
+#back-button:hover {
+    background-color: rgba(255, 0, 0, 0.7);
+}
+
+/* Content container */
+#content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    margin: 0 auto;
+    width: 60%;
+}
+
+/* Info container */
+#info-container {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+#poster {
+    width: 250px;
+    border-radius: 10px;
+}
+
+#details {
+    display: flex;
+    flex-direction: column;
+    margin-left: 20px;
+    color: #fff;
+    flex: 1;
+}
+
+#details h1 {
+    font-size: 2em;
+    margin: 0 0 10px;
+    font-weight: bold;
+}
+
+#info-metadata {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#rating, #release-date {
+    margin-right: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #e8b647;
+}
+
+#description {
+    color: #fff;
+    font-size: 1em;
+    margin: 10px 0;
+}
+
+/* Play button styling */
+#play-button {
+    background-color: #e50914;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-size: 1em;
+    width: 120px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#play-button:hover {
+    background-color: #f40612;
+}
+
+/* Iframe container */
+#iframe-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+#iframe-container iframe {
+    width: 100%;
+    height: 0svh;
+    border: none;
+    border-radius: 10px;
+}
+
+/* Selection styling */
+#server-selection, #season-episode-selection {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+}
+
+#server-selection label, #season-episode-selection label {
+    color: #000;
+}
+
+#server-select, #season-select {
+    margin-left: 10px;
+    padding: 5px;
+    font-size: 16px;
+    color: white;
+    background-color: black;
+    border: 1px solid white;
+}
+
+#server-select:focus, #season-select:focus {
+    outline: none;
+    border-color: red;
+}
+
+/* Episode list styling */
+#episode-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.episode-item {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+.episode-number {
+    font-size: 1.2em;
+    margin-right: 10px;
+    color: #fff;
+}
+
+.episode-image-container {
+    position: relative;
+}
+
+.episode-image {
+    width: 120px;
+    height: auto;
+    margin-right: 10px;
+    border-radius: 5px;
+}
+
+.play-button {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2em;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.episode-details {
+    display: flex;
+    flex-direction: column;
+    color: #fff;
+    flex: 1;
+}
+
+.episode-title {
+    font-size: 1em;
+    margin: 0;
+}
+
+.episode-overview {
+    margin-top: 5px;
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Actors and recommendations */
+#actors, #recommendations {
+    width: 100%;
+    margin-top: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+#actors h2, #recommendations h2 {
+    margin-top: 0;
+}
+
+#actors-list, #recommendations-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.actor-item {
+    width: 100px;
+    margin: 10px;
+    text-align: center;
+}
+
+.actor-item img {
+    width: 100%;
+    border-radius: 50%;
+}
+
+.recommendation-item {
+    width: 200px;
+    text-align: center;
+    cursor: pointer;
+    position: relative; /* To position bookmark icon */
+}
+
+.recommendation-item img {
+    width: 100%;
+    border-radius: 10px;
+    transition: transform 0.2s;
+}
+
+.recommendation-item:hover img {
+    transform: scale(1.05);
+}
+
+.recommendation-title {
+    margin-top: 5px;
+    font-size: 1em;
+    color: #fff;
+}
+
+.bookmark-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1.5em;
+    z-index: 2;
+    transition: color 0.3s;
+}
+
+.bookmarked {
+    color: gold;
+}
+
+/* Media queries for responsiveness */
+@media (max-width: 768px) {
+    #content {
+        padding: 15px;
+        margin: 40px auto;
+        width: 90%;
+    }
+
+    #info-container {
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    #poster {
+        width: 250px;
+        margin-bottom: 15px;
+    }
+
+    #details {
+        max-width: 100%;
+        font-size: 16px;
+    }
+
+    #details h1 {
+        font-size: 20px;
+    }
+
+    #season-episode-selection select {
+        font-size: 14px;
+        padding: 3px;
+    }
+
+    .actor-item {
+        width: 120px;
+    }
+
+    .recommendation-item {
+        width: 180px;
+    }
+}
+
+@media (max-width: 480px) {
+    #content {
+        padding: 10px;
+        margin: 30px auto;
+        width: 95%;
+    }
+
+    #info-container {
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    #poster {
+        width: 200px;
+        margin-bottom: 10px;
+    }
+
+    #details {
+        max-width: 100%;
+        font-size: 14px;
+    }
+
+    #details h1 {
+        font-size: 18px;
+    }
+
+    #season-episode-selection select {
+        font-size: 12px;
+        padding: 2px;
+    }
+
+    .actor-item {
+        width: 80px;
+    }
+
+    .recommendation-item {
+        width: 80px;
+    }
+}

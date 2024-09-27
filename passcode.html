@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter Passcode</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+        }
+        #passcode-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input[type="password"] {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #555;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div id="passcode-form">
+        <h2>Enter Secret Passcode</h2>
+        <input type="password" id="passcode-input" placeholder="Enter Passcode">
+        <button onclick="checkPasscode()">Submit</button>
+        <p id="error-message" style="color: red; display: none;">Incorrect passcode. Please try again.</p>
+    </div>
+
+    <script src="scripts/passcode.js"></script>
+</body>
+</html>

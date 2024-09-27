@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Details</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">  
+  <link rel="stylesheet" href="stylesheets/tvshow.css">
+  <script src="scripts/passcode.js"></script>
+
+</head>
+<body>
+  <div id="background"></div>
+  <button id="back-button">&#8592;</button>
+  <div id="iframe-container">
+    <iframe id="video-frame" alalowfullscreen></iframe>
+  </div>
+  <div id="content">
+    <div id="info-container">
+      <img id="poster" src="" alt="Poster">
+      <div id="details">
+        <h1 id="title"></h1>
+        <div id="info-metadata">
+          <p id="rating"></p>
+          <p id="release-date"></p>
+        </div>
+        <p id="description"></p>
+        <button id="play-button">► Play Now</button>
+      </div>
+    </div>
+
+    <div id="server-selection">
+      <label for="server-select">Select a Server:</label>
+      <select id="server-select">
+        <option value="vidsrc" selected>VidSrc</option>
+        <option value="vidsrcvip">VidSrc.Vip</option>
+        <option value="vidsrcpro" >VidSrc Pro</option>
+        <option value="vidsrcin">Vid.In</option>
+        <option value="superembed">SuperEmbed</option>
+        <option value="autoembed">autoembed</option>
+
+      </select>
+    </div>
+    <div id="season-episode-selection">
+      <label for="season-select">Season:</label>
+      <select id="season-select"></select>
+    </div>
+    <div id="episode-list"></div>
+
+    <!-- Actors Section -->
+    <div id="actors-container">
+      <h2>Actors</h2>
+      <div id="actors-list"></div>
+    </div>
+
+    <!-- You May Also Like Section -->
+    <div id="recommendations-container">
+      <h2>You May Also Like</h2>
+      <div id="recommendations-list"></div>
+    </div>
+  </div>
+  <script type="module" src="scripts/tvshow.js"></script>
+</body>
+</html>
