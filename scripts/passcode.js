@@ -24,4 +24,7 @@ function verifyAccess() {
     }
 }
 
-verifyAccess();
+// Only call verifyAccess() on protected pages
+if (!window.location.pathname.endsWith('passcode.html')) {
+    verifyAccess();
+}
