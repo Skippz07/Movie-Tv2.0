@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const playButton = document.getElementById('play-button');
   const infoContainer = document.getElementById('info-container');
   const serverSelect = document.getElementById('server-select');
-  let currentSrc = 'vidsrc'; // Default source
+  let currentSrc = 'vidsrcpro'; // Default source
 
   if (selectedItem) {
     displayItemDetails(selectedItem);
