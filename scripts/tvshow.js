@@ -5,7 +5,7 @@ const apiKey = CONFIG.API_KEY;
 
 document.addEventListener('DOMContentLoaded', async () => {
   const selectedItem = JSON.parse(localStorage.getItem('selectedItem'));
-  let currentSrc = 'vidsrc'; // Set default server to vidsrc
+  let currentSrc = 'vidsrcpro'; // Set default server to vidsrcpro
   const videoFrame = document.getElementById('video-frame');
   const infoContainer = document.getElementById('info-container');
   const playButton = document.getElementById('play-button');
