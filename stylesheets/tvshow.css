@@ -52,6 +52,130 @@ body, html {
     width: 60%;
 }
 
+.hidden {
+    display: none !important;
+}
+
+.hidden-until-ready {
+    display: none !important;
+}
+
+.content-ready #info-skeleton {
+    display: none !important;
+}
+
+.content-ready .hidden-until-ready {
+    display: flex !important;
+}
+
+.content-ready #info-container.hidden-until-ready {
+    display: flex !important;
+}
+
+.content-ready #controls-row.hidden-until-ready {
+    display: flex !important;
+}
+
+/* Skeleton — detail header */
+.detail-skeleton {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.detail-skeleton-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.06) 0%,
+        rgba(255, 255, 255, 0.14) 50%,
+        rgba(255, 255, 255, 0.06) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.2s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+.skeleton-poster {
+    width: 250px;
+    height: 375px;
+    flex-shrink: 0;
+    border-radius: 10px;
+}
+
+.skeleton-line {
+    height: 14px;
+    width: 100%;
+}
+
+.skeleton-line-lg {
+    height: 28px;
+    width: 70%;
+}
+
+.skeleton-line-sm {
+    width: 40%;
+    height: 18px;
+}
+
+.skeleton-line-short {
+    width: 55%;
+}
+
+.skeleton-episode-row {
+    height: 100px;
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}
+
+.episode-skeleton {
+    width: 100%;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 10px;
+}
+
+.skeleton-grid {
+    min-height: 120px;
+}
+
+.skeleton-grid.is-loading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.skeleton-grid.is-loading::before {
+    content: "";
+    display: block;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.06) 0%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.06) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
 /* Info container */
 #info-container {
     display: flex;
@@ -118,37 +242,111 @@ body, html {
 /* Iframe container */
 #iframe-container {
     width: 100%;
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-#iframe-container iframe {
-    width: 100%;
-    height: 0svh;
-    border: none;
+    max-width: 1200px;
+    margin: 20px auto 0;
+    position: relative;
     border-radius: 10px;
+    overflow: hidden;
+    background: #0a0a0a;
 }
 
-/* Selection styling */
+#iframe-container.iframe-collapsed iframe {
+    width: 100%;
+    height: 0;
+    min-height: 0;
+    border: none;
+    display: block;
+}
+
+#iframe-container.iframe-active {
+    aspect-ratio: 16 / 9;
+    max-height: 72vh;
+}
+
+#iframe-container.iframe-active iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    border: none;
+    display: block;
+}
+
+.iframe-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.iframe-loading.hidden {
+    display: none;
+}
+
+.iframe-loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #e50914;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.iframe-loading-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.embed-status {
+    max-width: 1200px;
+    margin: 8px auto 0;
+    padding: 0 16px;
+    min-height: 1.25em;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.88);
+    text-align: center;
+}
+
+/* Controls row */
+.controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 24px 32px;
+    margin: 8px 0 16px;
+    width: 100%;
+}
+
 #server-selection, #season-episode-selection {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 20px 0;
+    gap: 10px;
 }
 
 #server-selection label, #season-episode-selection label {
-    color: #000;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
 }
 
 #server-select, #season-select {
-    margin-left: 10px;
-    padding: 5px;
+    padding: 8px 12px;
     font-size: 16px;
     color: white;
-    background-color: black;
-    border: 1px solid white;
+    background-color: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 6px;
+    min-width: 160px;
 }
 
 #server-select:focus, #season-select:focus {
@@ -157,13 +355,14 @@ body, html {
 }
 
 /* Episode list styling */
-#episode-list {
+.episode-list-host {
     display: flex;
     flex-direction: column;
     width: 100%;
     background: rgba(0, 0, 0, 0.7);
     padding: 10px;
     border-radius: 10px;
+    min-height: 48px;
 }
 
 .episode-item {
@@ -173,6 +372,19 @@ body, html {
     padding: 10px;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+    border: 2px solid transparent;
+}
+
+.episode-item:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.episode-item.is-active {
+    border-color: #e50914;
+    background-color: rgba(229, 9, 20, 0.12);
+    box-shadow: 0 0 0 1px rgba(229, 9, 20, 0.35);
 }
 
 .episode-number {
@@ -187,22 +399,34 @@ body, html {
 
 .episode-image {
     width: 120px;
-    height: auto;
+    height: 68px;
+    object-fit: cover;
     margin-right: 10px;
     border-radius: 5px;
+    background: #222;
 }
 
 .play-button {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
-    background-color: rgba(0, 0, 0, 0.7);
+    bottom: 8px;
+    left: 8px;
+    background-color: rgba(0, 0, 0, 0.75);
     border: none;
     border-radius: 50%;
     color: white;
-    font-size: 1.2em;
-    padding: 5px;
+    font-size: 1.1em;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+.play-button:hover {
+    background-color: rgba(229, 9, 20, 0.9);
+    transform: scale(1.05);
 }
 
 .episode-details {
@@ -246,6 +470,19 @@ body, html {
     gap: 10px;
 }
 
+.lazy-section {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 10px;
+}
+
+.lazy-section h2 {
+    margin-top: 0;
+    color: #fff;
+}
+
 .actor-item {
     width: 100px;
     margin: 10px;
@@ -254,7 +491,10 @@ body, html {
 
 .actor-item img {
     width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
     border-radius: 50%;
+    background: #222;
 }
 
 .recommendation-item {
@@ -266,8 +506,11 @@ body, html {
 
 .recommendation-item img {
     width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
     border-radius: 10px;
     transition: transform 0.2s;
+    background: #222;
 }
 
 .recommendation-item:hover img {
@@ -293,6 +536,36 @@ body, html {
 
 .bookmarked {
     color: gold;
+}
+
+.episode-empty {
+    margin: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+}
+
+.episode-image--placeholder {
+    background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+    object-fit: cover;
+}
+
+.popup-message {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: none;
+    transition: opacity 0.35s;
+    z-index: 100;
+    max-width: min(90vw, 320px);
+}
+
+.popup-message.show {
+    display: block;
+    opacity: 1;
 }
 
 /* Media queries for responsiveness */

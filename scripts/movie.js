@@ -1,54 +1,151 @@
 import CONFIG from './config.js';
+import {
+  buildMovieEmbedUrl,
+  getFailoverOrder,
+  fillServerSelect,
+  normalizePrimaryServer,
+  DEFAULT_USER_SERVER,
+} from './embedProviders.js';
+import { playWithFailover } from './embedFailover.js';
+
+const DEFAULT_SERVER = DEFAULT_USER_SERVER;
+const MOVIE_SERVER_KEY = (id) => `movieWatchServer:${id}`;
+
+function readMovieServer(tmdbId) {
+  try {
+    const raw = sessionStorage.getItem(MOVIE_SERVER_KEY(tmdbId));
+    if (!raw) return DEFAULT_SERVER;
+    const o = JSON.parse(raw);
+    return normalizePrimaryServer(
+      typeof o.server === 'string' ? o.server : DEFAULT_SERVER
+    );
+  } catch {
+    return DEFAULT_SERVER;
+  }
+}
+
+function writeMovieServer(tmdbId, server) {
+  sessionStorage.setItem(
+    MOVIE_SERVER_KEY(tmdbId),
+    JSON.stringify({ server })
+  );
+}
+
+function setEmbedStatusLine(text) {
+  const el = document.getElementById('embed-status-text');
+  if (el) el.textContent = text || '';
+}
+
+function setIframeLoading(isLoading) {
+  const el = document.getElementById('iframe-loading');
+  if (!el) return;
+  el.classList.toggle('hidden', !isLoading);
+}
+
+function expandPlayerShell(active) {
+  const wrap = document.getElementById('iframe-container');
+  if (!wrap) return;
+  wrap.classList.toggle('iframe-active', active);
+  wrap.classList.toggle('iframe-collapsed', !active);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const selectedItem = JSON.parse(localStorage.getItem('selectedItem'));
+  let selectedItem;
+  try {
+    selectedItem = JSON.parse(localStorage.getItem('selectedItem'));
+  } catch {
+    selectedItem = null;
+  }
+
   const videoFrame = document.getElementById('video-frame');
   const playButton = document.getElementById('play-button');
   const infoContainer = document.getElementById('info-container');
   const serverSelect = document.getElementById('server-select');
-  let currentSrc = 'vidsrcpro'; // Default source
 
-  if (selectedItem) {
-    displayItemDetails(selectedItem);
-    const videoSources = {
-      vidsrc: `https://vidsrc.vip/embed/movie/${selectedItem.id}`,
-      vidsrcpro: `https://vidsrc.pro/embed/movie/${selectedItem.id}`,
-      vidsrcin: `https://vidsrc.in/embed/movie/${selectedItem.id}`,
-      multiembed: `https://multiembed.mov/?video_id=${selectedItem.id}&tmdb=1`,
-      autoembed: `https://player.autoembed.cc/embed/movie/${selectedItem.id}`,
-    };
+  let cancelFailover = null;
+  let currentServer = DEFAULT_SERVER;
 
-    // Set initial video source
-    videoFrame.src = videoSources[currentSrc];
-
-    // Handle server selection
-    serverSelect.addEventListener('change', (e) => {
-      currentSrc = e.target.value;
-      videoFrame.src = videoSources[currentSrc];
-    });
-
-    playButton.addEventListener('click', () => {
-      videoFrame.src = videoSources[currentSrc];
-      infoContainer.style.display = 'none';
-      videoFrame.style.height = 'calc(100vh - 40px)'; // Adjust this value based on your header/footer heights
-    });
-
-    await loadActors(selectedItem.id);
-    await loadRecommendations(selectedItem.id);
-    loadBookmarks();
-  } else {
+  if (!selectedItem) {
     document.getElementById('content').textContent = 'No item selected.';
+    document.getElementById('back-button')?.addEventListener('click', () => {
+      window.history.back();
+    });
+    return;
   }
 
-  document.getElementById('back-button').addEventListener('click', () => {
+  if (selectedItem.name && !selectedItem.title) {
+    window.location.href = 'tvshow.html';
+    return;
+  }
+
+  currentServer = readMovieServer(selectedItem.id);
+  fillServerSelect(serverSelect, currentServer);
+
+  displayItemDetails(selectedItem);
+
+  function startMoviePlayback() {
+    cancelFailover?.();
+    cancelFailover = null;
+
+    setEmbedStatusLine('Loading player…');
+    setIframeLoading(true);
+    expandPlayerShell(true);
+
+    const orderedKeys = getFailoverOrder(serverSelect.value || currentServer);
+
+    cancelFailover = playWithFailover(videoFrame, {
+      orderedKeys,
+      buildUrl: (key) => buildMovieEmbedUrl(key, selectedItem.id),
+      onStatus: (msg) => setEmbedStatusLine(msg || 'Loading player…'),
+      onResolved: (key, reason) => {
+        cancelFailover = null;
+        if (key) {
+          currentServer = key;
+          serverSelect.value = key;
+          writeMovieServer(selectedItem.id, key);
+        }
+        setIframeLoading(false);
+        if (reason === 'exhausted') {
+          setEmbedStatusLine(
+            'All sources timed out. Pick another server or try again.'
+          );
+        } else {
+          setEmbedStatusLine('');
+        }
+      },
+    });
+  }
+
+  serverSelect.addEventListener('change', () => {
+    currentServer = serverSelect.value;
+    writeMovieServer(selectedItem.id, currentServer);
+    startMoviePlayback();
+  });
+
+  playButton.addEventListener('click', () => {
+    infoContainer.style.display = 'none';
+    document.getElementById('iframe-container')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  });
+
+  startMoviePlayback();
+
+  await loadActors(selectedItem.id);
+  await loadRecommendations(selectedItem.id);
+  loadBookmarks();
+
+  document.getElementById('back-button')?.addEventListener('click', () => {
     window.history.back();
   });
 });
 
-
 async function loadActors(movieId) {
   try {
-    const response = await fetch(`${CONFIG.API_BASE_URL}/movie/${movieId}/credits?api_key=${CONFIG.API_KEY}`);
+    const response = await fetch(
+      `${CONFIG.API_BASE_URL}/movie/${movieId}/credits?api_key=${CONFIG.API_KEY}`
+    );
     const data = await response.json();
     const actors = data.cast.slice(0, 5);
     populateActorsList(actors);
@@ -60,13 +157,14 @@ async function loadActors(movieId) {
 function populateActorsList(actors) {
   const actorsList = document.getElementById('actors-list');
   actorsList.innerHTML = '';
-  actors.forEach(actor => {
+  actors.forEach((actor) => {
     const actorItem = document.createElement('div');
     actorItem.className = 'actor-item';
 
     const actorImage = document.createElement('img');
     actorImage.src = `https://image.tmdb.org/t/p/w500${actor.profile_path}`;
     actorImage.alt = actor.name;
+    actorImage.loading = 'lazy';
 
     const actorName = document.createElement('p');
     actorName.textContent = actor.name;
@@ -80,7 +178,9 @@ function populateActorsList(actors) {
 
 async function loadRecommendations(movieId) {
   try {
-    const response = await fetch(`${CONFIG.API_BASE_URL}/movie/${movieId}/recommendations?api_key=${CONFIG.API_KEY}`);
+    const response = await fetch(
+      `${CONFIG.API_BASE_URL}/movie/${movieId}/recommendations?api_key=${CONFIG.API_KEY}`
+    );
     const data = await response.json();
     const recommendations = data.results.slice(0, 10);
     populateRecommendationsList(recommendations);
@@ -92,22 +192,26 @@ async function loadRecommendations(movieId) {
 function populateRecommendationsList(recommendations) {
   const recommendationsList = document.getElementById('recommendations-list');
   recommendationsList.innerHTML = '';
-  recommendations.forEach(item => {
+  recommendations.forEach((item) => {
     const recommendationItem = document.createElement('div');
     recommendationItem.className = 'recommendation-item';
     recommendationItem.dataset.id = item.id;
-    recommendationItem.dataset.type = 'movie'; // Assuming these are movies; adjust if needed
+    recommendationItem.dataset.type = 'movie';
 
     const recommendationImage = document.createElement('img');
     recommendationImage.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
     recommendationImage.alt = item.title || item.name;
+    recommendationImage.loading = 'lazy';
 
     const recommendationTitle = document.createElement('p');
+    recommendationTitle.className = 'recommendation-title';
     recommendationTitle.textContent = item.title || item.name;
 
     const bookmarkIcon = document.createElement('i');
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
-    bookmarkIcon.addEventListener('click', (event) => toggleBookmark(event, item.id, 'movie'));
+    bookmarkIcon.addEventListener('click', (event) =>
+      toggleBookmark(event, item.id, 'movie')
+    );
 
     recommendationItem.appendChild(recommendationImage);
     recommendationItem.appendChild(recommendationTitle);
@@ -121,85 +225,60 @@ function populateRecommendationsList(recommendations) {
     });
   });
 
-  loadBookmarks(); // Ensure bookmarks are loaded and icons are updated
+  loadBookmarks();
 }
 
 function displayItemDetails(item) {
-  document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${item.backdrop_path || item.poster_path})`;
+  document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${
+    item.backdrop_path || item.poster_path
+  })`;
   document.getElementById('poster').src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
   document.getElementById('title').textContent = item.title || item.name;
   document.getElementById('description').textContent = item.overview;
   document.getElementById('rating').textContent = `Rating: ${item.vote_average}`;
-  document.getElementById('release-date').textContent = `Release Date: ${item.release_date || item.first_air_date}`;
+  document.getElementById('release-date').textContent = `Release Date: ${
+    item.release_date || item.first_air_date
+  }`;
 }
 
-async function fetchVideoData(url) {
-  try {
-    const response = await fetch(url);
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      console.error('Expected JSON response but got:', contentType);
-      const text = await response.text();
-      console.error('Response text:', text);
-      return null;
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching video data:', error);
-  }
-}
-
-document.querySelectorAll('.server-button').forEach(button => {
-  button.addEventListener('click', async (e) => {
-    const srcKey = e.target.getAttribute('data-src');
-    const url = videoSources[srcKey];
-    const data = await fetchVideoData(url);
-    if (data) {
-      console.log('Fetched data:', data);
-    }
-  });
-});
-
-function filterAds(items) {
-  return items.filter(item => (item.title && !item.title.toLowerCase().includes('ad')) || (item.name && !item.name.toLowerCase().includes('ad')));
-}
-
-// Bookmark functions
 function toggleBookmark(event, itemId, itemType) {
-  event.stopPropagation(); // Prevent triggering the card click event
+  event.stopPropagation();
 
   const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
-  const index = bookmarks.findIndex(item => item.id === itemId && item.type === itemType);
+  const index = bookmarks.findIndex(
+    (item) => item.id === itemId && item.type === itemType
+  );
   const itemDetails = event.currentTarget.parentNode;
-  const itemName = itemDetails.querySelector('p').textContent;
+  const itemName = itemDetails.querySelector('p')?.textContent || 'Item';
+  const iconEl = event.currentTarget;
 
   if (index !== -1) {
-    // Remove bookmark
     bookmarks.splice(index, 1);
-    event.target.classList.remove('bookmarked');
+    iconEl.classList.remove('bookmarked');
     showPopupMessage(`${itemName} has been removed from bookmarks!`);
   } else {
-    // Add bookmark
     bookmarks.push({ id: itemId, type: itemType });
-    event.target.classList.add('bookmarked');
+    iconEl.classList.add('bookmarked');
     showPopupMessage(`${itemName} has been added to bookmarks!`);
   }
 
   localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-  displayBookmarkedItems(); // Refresh the display
+  const container = document.getElementById('bookmarked-items');
+  if (container) displayBookmarkedItems();
 }
 
 function loadBookmarks() {
   const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
-  document.querySelectorAll('.recommendation-item').forEach(card => {
-    const itemId = card.dataset.id;
+  document.querySelectorAll('.recommendation-item').forEach((card) => {
+    const itemId = Number(card.dataset.id);
     const itemType = card.dataset.type;
     const bookmarkIcon = card.querySelector('.bookmark-icon');
-    if (bookmarks.some(item => item.id === itemId && item.type === itemType)) {
-      bookmarkIcon.classList.add('bookmarked');
+    if (
+      bookmarks.some((item) => item.id === itemId && item.type === itemType)
+    ) {
+      bookmarkIcon?.classList.add('bookmarked');
     } else {
-      bookmarkIcon.classList.remove('bookmarked');
+      bookmarkIcon?.classList.remove('bookmarked');
     }
   });
 }
@@ -225,23 +304,52 @@ function showPopupMessage(message) {
   }, 10);
 }
 
-function displayBookmarkedItems() {
-  const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
-  const container = document.getElementById('bookmarked-items');
-  if (!container) {
-    console.error('Element with ID "bookmarked-items" not found.');
-    return;
-  }
-  container.innerHTML = '';
+async function fetchData(endpoint) {
+  const response = await fetch(
+    `${CONFIG.API_BASE_URL}${endpoint}&api_key=${CONFIG.API_KEY}`
+  );
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
 
-  bookmarks.forEach(async item => {
+function createCard(item, type) {
+  const card = document.createElement('div');
+  card.classList.add('card');
+  card.dataset.id = item.id;
+  card.dataset.type = type;
+  const poster = document.createElement('img');
+  poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  poster.loading = 'lazy';
+  card.appendChild(poster);
+  const playButton = document.createElement('div');
+  playButton.classList.add('play-button');
+  playButton.innerHTML = '<i class="fas fa-play"></i>';
+  card.appendChild(playButton);
+  const title = document.createElement('div');
+  title.classList.add('title');
+  title.textContent = item.title || item.name;
+  card.appendChild(title);
+  const bookmarkIcon = document.createElement('i');
+  bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
+  bookmarkIcon.addEventListener('click', (event) =>
+    toggleBookmark(event, item.id, type)
+  );
+  card.appendChild(bookmarkIcon);
+  card.addEventListener('click', () => {
+    localStorage.setItem('selectedItem', JSON.stringify(item));
+    window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
+  });
+  return card;
+}
+
+function displayBookmarkedItems() {
+  const container = document.getElementById('bookmarked-items');
+  if (!container) return;
+  container.innerHTML = '';
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
+  bookmarks.forEach(async (item) => {
     const data = await fetchData(`/${item.type}/${item.id}?`);
     const card = createCard(data, item.type);
     container.appendChild(card);
   });
 }
-
-
-document.addEventListener('DOMContentLoaded', async () => {
-  loadBookmarks();
-});

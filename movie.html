@@ -26,20 +26,18 @@
       </div>
     </div>
     <div id="server-selection">
-      <label for="server-select">Select a Server:</label>
-      <select id="server-select">
-        <option value="vidsrc" >VidSrc</option>
-        <option value="vidsrcpro" selected>VidSrc Pro</option>
-        <option value="vidsrcin" >Vid.In</option>
-        <option value="multiembed">MultiEmbed</option>
-        <option value="autoembed">autoembed</option>
-
-      </select>
+      <label for="server-select">Server</label>
+      <select id="server-select"></select>
     </div>
   </div>
-  <div id="iframe-container">
-    <iframe id="video-frame" allowfullscreen></iframe>
-  </div> 
+  <div id="iframe-container" class="iframe-collapsed">
+    <div id="iframe-loading" class="iframe-loading hidden" aria-hidden="true">
+      <span class="iframe-loading-spinner"></span>
+      <span class="iframe-loading-text">Loading…</span>
+    </div>
+    <iframe id="video-frame" title="Movie player" allowfullscreen></iframe>
+  </div>
+  <p id="embed-status-text" class="embed-status" aria-live="polite"></p>
 
   <!-- Actors Section -->
   <div id="actors-container">

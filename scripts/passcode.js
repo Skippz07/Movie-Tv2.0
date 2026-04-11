@@ -1,4 +1,4 @@
-const SECRET_PASSCODE = "129875"; // Set your secret passcode here
+const SECRET_PASSCODE = "123456"; // Set your secret passcode here
 
 function checkPasscode() {
     const inputPasscode = document.getElementById('passcode-input').value;

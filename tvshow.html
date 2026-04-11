@@ -11,13 +11,29 @@
 </head>
 <body>
   <div id="background"></div>
-  <button id="back-button">&#8592;</button>
-  <div id="iframe-container">
-    <iframe id="video-frame" allowfullscreen></iframe>
+  <button id="back-button" type="button" aria-label="Back">&#8592;</button>
+  <div id="iframe-container" class="iframe-collapsed">
+    <div id="iframe-loading" class="iframe-loading hidden" aria-hidden="true">
+      <span class="iframe-loading-spinner"></span>
+      <span class="iframe-loading-text">Loading…</span>
+    </div>
+    <iframe id="video-frame" title="Episode player" allowfullscreen></iframe>
   </div>
+  <p id="embed-status-text" class="embed-status" aria-live="polite"></p>
   <div id="content">
-    <div id="info-container">
-      <img id="poster" src="" alt="Poster">
+    <div id="info-skeleton" class="detail-skeleton" aria-busy="true">
+      <div class="skeleton skeleton-poster"></div>
+      <div class="detail-skeleton-text">
+        <div class="skeleton skeleton-line skeleton-line-lg"></div>
+        <div class="skeleton skeleton-line skeleton-line-sm"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line"></div>
+        <div class="skeleton skeleton-line skeleton-line-short"></div>
+      </div>
+    </div>
+
+    <div id="info-container" class="hidden-until-ready">
+      <img id="poster" src="" alt="" loading="eager" decoding="async">
       <div id="details">
         <h1 id="title"></h1>
         <div id="info-metadata">
@@ -25,38 +41,36 @@
           <p id="release-date"></p>
         </div>
         <p id="description"></p>
-        <button id="play-button">► Play Now</button>
+        <button id="play-button" type="button">Focus player</button>
       </div>
     </div>
 
-    <div id="server-selection">
-      <label for="server-select">Select a Server:</label>
-      <select id="server-select">
-        <option value="vidsrc" >VidSrc</option>
-        <option value="vidsrcvip">VidSrc.Vip</option>
-        <option value="vidsrcpro" selected>VidSrc Pro</option>
-        <option value="vidsrcin">Vid.In</option>
-        <option value="superembed">SuperEmbed</option>
-        <option value="autoembed">autoembed</option>
-
-      </select>
+    <div id="controls-row" class="controls-row hidden-until-ready">
+      <div id="server-selection">
+        <label for="server-select">Server</label>
+        <select id="server-select"></select>
+      </div>
+      <div id="season-episode-selection">
+        <label for="season-select">Season</label>
+        <select id="season-select" disabled></select>
+      </div>
     </div>
-    <div id="season-episode-selection">
-      <label for="season-select">Season:</label>
-      <select id="season-select"></select>
-    </div>
-    <div id="episode-list"></div>
 
-    <!-- Actors Section -->
-    <div id="actors-container">
+    <div id="episode-list" class="episode-list-host" aria-live="polite"></div>
+    <div id="episode-skeleton" class="episode-skeleton hidden" aria-hidden="true">
+      <div class="skeleton skeleton-episode-row"></div>
+      <div class="skeleton skeleton-episode-row"></div>
+      <div class="skeleton skeleton-episode-row"></div>
+    </div>
+
+    <div id="actors-container" class="lazy-section">
       <h2>Actors</h2>
-      <div id="actors-list"></div>
+      <div id="actors-list" class="skeleton-grid"></div>
     </div>
 
-    <!-- You May Also Like Section -->
-    <div id="recommendations-container">
+    <div id="recommendations-container" class="lazy-section">
       <h2>You May Also Like</h2>
-      <div id="recommendations-list"></div>
+      <div id="recommendations-list" class="skeleton-grid"></div>
     </div>
   </div>
   <script type="module" src="scripts/tvshow.js"></script>
