@@ -6,6 +6,7 @@ body, html {
     height: 100%;
     font-family: Arial, sans-serif;
     color: white;
+    background: #08090d;
 }
 
 
@@ -22,14 +23,23 @@ body, html {
     z-index: -1;
 }
 
+#background::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(8, 9, 13, 0.95), rgba(8, 9, 13, 0.7)),
+        linear-gradient(180deg, rgba(8, 9, 13, 0.45), #08090d 80%);
+}
+
 /* Back button styling */
 #back-button {
     position: fixed;
     top: 20px;
     left: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border: none;
-    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
     color: white;
     font-size: 1.2em;
     padding: 10px 20px;
@@ -39,7 +49,7 @@ body, html {
 }
 
 #back-button:hover {
-    background-color: rgba(255, 0, 0, 0.7);
+    background-color: rgba(229, 9, 20, 0.86);
 }
 
 /* Content container */
@@ -49,7 +59,8 @@ body, html {
     align-items: center;
     padding: 20px;
     margin: 0 auto;
-    width: 60%;
+    width: min(100% - 40px, 1120px);
+    padding-top: 70px;
 }
 
 .hidden {
@@ -182,11 +193,20 @@ body, html {
     align-items: flex-start;
     margin-bottom: 20px;
     width: 100%;
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
 #poster {
     width: 250px;
-    border-radius: 10px;
+    border-radius: 8px;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    background: #181b24;
 }
 
 #details {
@@ -198,7 +218,8 @@ body, html {
 }
 
 #details h1 {
-    font-size: 2em;
+    font-size: clamp(2rem, 5vw, 4rem);
+    line-height: 1;
     margin: 0 0 10px;
     font-weight: bold;
 }
@@ -213,20 +234,21 @@ body, html {
     margin-right: 15px;
     font-size: 1.1em;
     font-weight: bold;
-    color: #e8b647;
+    color: #f2b84b;
 }
 
 #description {
-    color: #fff;
+    color: rgba(255, 255, 255, 0.82);
     font-size: 1em;
+    line-height: 1.65;
     margin: 10px 0;
 }
 
 /* Play button styling */
 #play-button {
-    background-color: #e50914;
+    background-color: #ef3d4e;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     color: white;
     font-size: 1em;
     width: 120px;
@@ -236,7 +258,7 @@ body, html {
 }
 
 #play-button:hover {
-    background-color: #f40612;
+    background-color: #f25564;
 }
 
 /* Iframe container */
@@ -245,9 +267,11 @@ body, html {
     max-width: 1200px;
     margin: 20px auto 0;
     position: relative;
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
     background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
 #iframe-container.iframe-collapsed iframe {
@@ -323,7 +347,7 @@ body, html {
     justify-content: center;
     align-items: center;
     gap: 24px 32px;
-    margin: 8px 0 16px;
+    margin: 8px 0 18px;
     width: 100%;
 }
 
@@ -332,6 +356,10 @@ body, html {
     justify-content: center;
     align-items: center;
     gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
 }
 
 #server-selection label, #season-episode-selection label {
@@ -340,18 +368,18 @@ body, html {
 }
 
 #server-select, #season-select {
-    padding: 8px 12px;
+    padding: 9px 12px;
     font-size: 16px;
     color: white;
-    background-color: #141414;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 6px;
+    background-color: #151821;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
     min-width: 160px;
 }
 
 #server-select:focus, #season-select:focus {
     outline: none;
-    border-color: red;
+    border-color: #ef3d4e;
 }
 
 /* Episode list styling */
@@ -359,9 +387,10 @@ body, html {
     display: flex;
     flex-direction: column;
     width: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 10px;
-    border-radius: 10px;
+    border-radius: 8px;
     min-height: 48px;
 }
 
@@ -370,8 +399,8 @@ body, html {
     align-items: center;
     margin: 10px 0;
     padding: 10px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
     border: 2px solid transparent;
@@ -382,9 +411,9 @@ body, html {
 }
 
 .episode-item.is-active {
-    border-color: #e50914;
-    background-color: rgba(229, 9, 20, 0.12);
-    box-shadow: 0 0 0 1px rgba(229, 9, 20, 0.35);
+    border-color: #ef3d4e;
+    background-color: rgba(239, 61, 78, 0.12);
+    box-shadow: 0 0 0 1px rgba(239, 61, 78, 0.35);
 }
 
 .episode-number {
@@ -402,7 +431,7 @@ body, html {
     height: 68px;
     object-fit: cover;
     margin-right: 10px;
-    border-radius: 5px;
+    border-radius: 8px;
     background: #222;
 }
 
@@ -425,7 +454,7 @@ body, html {
 }
 
 .play-button:hover {
-    background-color: rgba(229, 9, 20, 0.9);
+    background-color: rgba(239, 61, 78, 0.95);
     transform: scale(1.05);
 }
 
@@ -474,8 +503,9 @@ body, html {
     width: 100%;
     margin-top: 24px;
     padding: 12px;
-    background: rgba(0, 0, 0, 0.55);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
 }
 
 .lazy-section h2 {
@@ -508,7 +538,7 @@ body, html {
     width: 100%;
     aspect-ratio: 2 / 3;
     object-fit: cover;
-    border-radius: 10px;
+    border-radius: 8px;
     transition: transform 0.2s;
     background: #222;
 }
@@ -573,7 +603,7 @@ body, html {
     #content {
         padding: 15px;
         margin: 40px auto;
-        width: 90%;
+        width: min(100% - 24px, 1120px);
     }
 
     #info-container {
@@ -590,6 +620,7 @@ body, html {
     #details {
         max-width: 100%;
         font-size: 16px;
+        margin-left: 0;
     }
 
     #details h1 {
@@ -614,7 +645,7 @@ body, html {
     #content {
         padding: 10px;
         margin: 30px auto;
-        width: 95%;
+        width: min(100% - 20px, 1120px);
     }
 
     #info-container {

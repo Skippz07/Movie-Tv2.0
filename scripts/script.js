@@ -3,6 +3,67 @@ import CONFIG from './config.js';
 const apiBaseURL = CONFIG.API_BASE_URL;
 const apiKey = CONFIG.API_KEY;
 let currentFeaturedIndex = 0; // Initialize currentFeaturedIndex
+let activeSearchFilter = 'all';
+let latestSearchToken = 0;
+let searchDebounceTimer = null;
+let lastSearchQuery = '';
+let lastSearchResults = { movies: [], tv: [] };
+
+const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const PLACEHOLDER_POSTER =
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%23151821"/><text x="50%" y="50%" fill="%238b93a6" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">No poster</text></svg>';
+
+let posterObserver = null;
+
+function getPosterObserver() {
+    if (posterObserver || !('IntersectionObserver' in window)) return posterObserver;
+    posterObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            const img = entry.target;
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+            }
+            img.classList.remove('lazy-poster');
+            observer.unobserve(img);
+        });
+    }, { rootMargin: '300px 0px', threshold: 0.01 });
+    return posterObserver;
+}
+
+function prepareLazyPoster(img, posterPath) {
+    img.src = PLACEHOLDER_POSTER;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    if (!posterPath) return;
+
+    const src = `${IMAGE_BASE}${posterPath}`;
+    const observer = getPosterObserver();
+    if (observer) {
+        img.dataset.src = src;
+        img.classList.add('lazy-poster');
+        observer.observe(img);
+    } else {
+        img.src = src;
+    }
+}
+
+function typeLabel(type) {
+    return type === 'tv' ? 'Series' : 'Movie';
+}
+
+function formatYear(item) {
+    const rawDate = item.release_date || item.first_air_date;
+    if (!rawDate) return typeLabel(item.media_type || item.type);
+    const year = new Date(rawDate).getFullYear();
+    return Number.isFinite(year) ? String(year) : typeLabel(item.media_type || item.type);
+}
+
+function ratingLabel(item) {
+    const rating = Number(item.vote_average || 0);
+    return rating > 0 ? rating.toFixed(1) : 'New';
+}
 
 document.getElementById('movies-selector').addEventListener('click', async () => {
     document.getElementById('movies-section').classList.remove('hidden');
@@ -23,7 +84,12 @@ document.getElementById('tv-selector').addEventListener('click', async () => {
 
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`${apiBaseURL}${endpoint}&api_key=${apiKey}`);
+        let url = `${apiBaseURL}${endpoint}`;
+        if (apiKey) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            url = `${url}${separator}api_key=${apiKey}`;
+        }
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -42,7 +108,8 @@ function createCard(item, type) {
     card.dataset.type = type;
 
     const poster = document.createElement('img');
-    poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+    poster.alt = item.title || item.name || 'Poster';
+    prepareLazyPoster(poster, item.poster_path);
     card.appendChild(poster);
 
     const playButton = document.createElement('div');
@@ -53,7 +120,28 @@ function createCard(item, type) {
     const title = document.createElement('div');
     title.classList.add('title');
     title.textContent = item.title || item.name;
-    card.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.classList.add('card-meta');
+
+    const mediaType = document.createElement('span');
+    mediaType.textContent = typeLabel(type);
+
+    const year = document.createElement('span');
+    year.textContent = formatYear({ ...item, type });
+
+    const rating = document.createElement('span');
+    rating.innerHTML = `<i class="fas fa-star"></i> ${ratingLabel(item)}`;
+
+    meta.appendChild(mediaType);
+    meta.appendChild(year);
+    meta.appendChild(rating);
+
+    const info = document.createElement('div');
+    info.classList.add('card-info');
+    info.appendChild(title);
+    info.appendChild(meta);
+    card.appendChild(info);
 
     const bookmarkIcon = document.createElement('i');
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
@@ -65,13 +153,6 @@ function createCard(item, type) {
 
     bookmarkIcon.addEventListener('click', (event) => toggleBookmark(event, item.id, type));
     card.appendChild(bookmarkIcon);
-
-    if (type === 'movie' && item.release_date) {
-        const year = document.createElement('div');
-        year.classList.add('year');
-        year.textContent = new Date(item.release_date).getFullYear();
-        card.appendChild(year);
-    }
 
     card.addEventListener('click', () => {
         localStorage.setItem('selectedItem', JSON.stringify(item));
@@ -149,6 +230,7 @@ function showPopupMessage(message) {
 function displayBookmarkedItems() {
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
     const container = document.getElementById('bookmarked-items');
+    if (!container) return;
     container.innerHTML = '';
 
     bookmarks.forEach(async item => {
@@ -164,18 +246,21 @@ async function displayMovies() {
     const topRatedMovies = await fetchData('/movie/top_rated?');
 
     const nowPlayingMoviesContainer = document.getElementById('now-playing-movies');
+    nowPlayingMoviesContainer.innerHTML = '';
     nowPlayingMovies.forEach(movie => {
         const card = createCard(movie, 'movie');
         nowPlayingMoviesContainer.appendChild(card);
     });
 
     const popularMoviesContainer = document.getElementById('popular-movies');
+    popularMoviesContainer.innerHTML = '';
     popularMovies.forEach(movie => {
         const card = createCard(movie, 'movie');
         popularMoviesContainer.appendChild(card);
     });
 
     const topRatedMoviesContainer = document.getElementById('top-rated-movies');
+    topRatedMoviesContainer.innerHTML = '';
     topRatedMovies.forEach(movie => {
         const card = createCard(movie, 'movie');
         topRatedMoviesContainer.appendChild(card);
@@ -192,18 +277,21 @@ async function displayTVShows() {
     const topRatedTV = await fetchData('/tv/top_rated?');
 
     const onTheAirContainer = document.getElementById('on-the-air');
+    onTheAirContainer.innerHTML = '';
     onTheAirTV.forEach(tvShow => {
         const card = createCard(tvShow, 'tv');
         onTheAirContainer.appendChild(card);
     });
 
     const popularTVContainer = document.getElementById('popular-tv');
+    popularTVContainer.innerHTML = '';
     popularTV.forEach(tvShow => {
         const card = createCard(tvShow, 'tv');
         popularTVContainer.appendChild(card);
     });
 
     const topRatedTVContainer = document.getElementById('top-rated-tv');
+    topRatedTVContainer.innerHTML = '';
     topRatedTV.forEach(tvShow => {
         const card = createCard(tvShow, 'tv');
         topRatedTVContainer.appendChild(card);
@@ -215,6 +303,7 @@ async function displayTVShows() {
 }
 
 async function displayFeaturedTrendingTVShow(trendingTV) {
+    if (!Array.isArray(trendingTV) || trendingTV.length === 0) return;
     const featuredShowContainer = document.getElementById('featured-show');
     const featuredTitle = document.getElementById('featured-title');
     const featuredRating = document.getElementById('featured-rating-value');
@@ -224,28 +313,30 @@ async function displayFeaturedTrendingTVShow(trendingTV) {
     const featuredShow = trendingTV[currentFeaturedIndex];
     currentFeaturedIndex = (currentFeaturedIndex + 1) % trendingTV.length;
 
-    featuredShowContainer.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${featuredShow.backdrop_path})`;
+    featuredShowContainer.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${featuredShow.backdrop_path || featuredShow.poster_path})`;
     featuredTitle.textContent = featuredShow.name;
-    featuredRating.textContent = featuredShow.vote_average;
-    featuredPopularity.textContent = `Popularity: ${featuredShow.popularity}`;
-    featuredDescription.textContent = featuredShow.overview;
+    featuredRating.textContent = Number(featuredShow.vote_average || 0).toFixed(1);
+    featuredPopularity.textContent = `Popularity ${Math.round(featuredShow.popularity || 0)}`;
+    featuredDescription.textContent = featuredShow.overview || 'No overview available.';
 
-    document.getElementById('play-button').addEventListener('click', () => {
+    document.getElementById('play-button').onclick = () => {
         localStorage.setItem('selectedItem', JSON.stringify(featuredShow));
         window.location.href = 'tvshow.html';
-    });
+    };
 }
 
 async function displayTrendingTVShowsList() {
     const trendingTV = await fetchData('/trending/tv/day?');
     const trendingTVListContainer = document.getElementById('trending-tv-list');
+    trendingTVListContainer.innerHTML = '';
 
     trendingTV.forEach(tvShow => {
         const card = document.createElement('div');
         card.classList.add('card');
 
         const poster = document.createElement('img');
-        poster.src = `https://image.tmdb.org/t/p/w500${tvShow.poster_path}`;
+        poster.alt = tvShow.name || 'Poster';
+        prepareLazyPoster(poster, tvShow.poster_path);
         card.appendChild(poster);
 
         const playButton = document.createElement('div');
@@ -263,12 +354,12 @@ async function displayTrendingTVShowsList() {
 
         const rating = document.createElement('div');
         rating.classList.add('rating');
-        rating.textContent = `Rating: ${tvShow.vote_average}`;
+        rating.textContent = `Rating ${Number(tvShow.vote_average || 0).toFixed(1)}`;
         info.appendChild(rating);
 
         const description = document.createElement('div');
         description.classList.add('description');
-        description.textContent = tvShow.overview;
+        description.textContent = tvShow.overview || 'No overview available.';
         info.appendChild(description);
 
         card.addEventListener('click', () => {
@@ -279,59 +370,121 @@ async function displayTrendingTVShowsList() {
         trendingTVListContainer.appendChild(card);
     });
 
+    displayFeaturedTrendingTVShow(trendingTV);
     setInterval(() => {
         displayFeaturedTrendingTVShow(trendingTV);
     }, 5000);
 }
 
-async function search(query) {
-    const movieResults = await fetchData(`/search/movie?query=${query}&`);
-    const tvResults = await fetchData(`/search/tv?query=${query}&`);
+function setSearchMode(isSearching) {
+    document.body.classList.toggle('search-active', isSearching);
+    document.querySelector('.selector').classList.toggle('hidden', isSearching);
+    document.getElementById('movies-section').classList.toggle('hidden', isSearching || !document.getElementById('movies-selector').checked);
+    document.getElementById('tv-shows-section').classList.toggle('hidden', isSearching || document.getElementById('movies-selector').checked);
+    document.getElementById('search-results').classList.toggle('hidden', !isSearching);
+    document.getElementById('featured-container').classList.toggle('hidden', isSearching);
+    document.getElementById('search-filters').classList.toggle('hidden', !isSearching);
+    document.getElementById('clear-search').classList.toggle('hidden', !isSearching);
+}
 
+function setSearchSummary(text) {
+    const el = document.getElementById('search-summary');
+    if (el) el.textContent = text;
+}
+
+function addStateMessage(container, className, message) {
+    const el = document.createElement('div');
+    el.className = className;
+    el.textContent = message;
+    container.appendChild(el);
+}
+
+function renderSearchResults(movieResults, tvResults, query) {
     const searchResultsContainer = document.getElementById('search-results-container');
     searchResultsContainer.innerHTML = '';
 
-    if (movieResults) {
-        movieResults.forEach(movie => {
-            const card = createCard(movie, 'movie');
-            searchResultsContainer.appendChild(card);
-        });
+    const combinedResults = [
+        ...movieResults.map(item => ({ item, type: 'movie' })),
+        ...tvResults.map(item => ({ item, type: 'tv' })),
+    ].filter(({ item, type }) => {
+        const hasPoster = item.poster_path || item.backdrop_path;
+        const matchesFilter = activeSearchFilter === 'all' || activeSearchFilter === type;
+        return hasPoster && matchesFilter;
+    });
+
+    combinedResults.sort((a, b) => (b.item.popularity || 0) - (a.item.popularity || 0));
+
+    setSearchSummary(`${combinedResults.length} result${combinedResults.length === 1 ? '' : 's'} for "${query}"`);
+
+    if (!combinedResults.length) {
+        addStateMessage(searchResultsContainer, 'empty-state', 'No matching titles found.');
+        return;
     }
 
-    if (tvResults) {
-        tvResults.forEach(tvShow => {
-            const card = createCard(tvShow, 'tv');
-            searchResultsContainer.appendChild(card);
-        });
-    }
+    combinedResults.forEach(({ item, type }) => {
+        const card = createCard(item, type);
+        searchResultsContainer.appendChild(card);
+    });
 }
 
-document.getElementById('search-bar').addEventListener('input', async (event) => {
-    const query = event.target.value;
-    console.log('Search query:', query); // Debug log
+async function search(query, token) {
+    const encodedQuery = encodeURIComponent(query);
+    const searchResultsContainer = document.getElementById('search-results-container');
+    searchResultsContainer.innerHTML = '';
+    addStateMessage(searchResultsContainer, 'loading-state', 'Searching...');
+    setSearchSummary('Looking through movies and TV shows.');
 
-    if (query.trim().length > 0) {
-        console.log('Adding hidden class');
-        document.querySelector('.selector').classList.add('hidden');
-        document.getElementById('movies-section').classList.add('hidden');
-        document.getElementById('tv-shows-section').classList.add('hidden');
-        document.getElementById('search-results').classList.remove('hidden');
-        document.getElementById('featured-show').classList.add('hidden');
-        document.getElementById('trending-list').classList.add('hidden');
-        await search(query);
-    } else {
-        console.log('Removing hidden class');
-        document.querySelector('.selector').classList.remove('hidden');
-        const isMoviesSelected = document.getElementById('movies-selector').checked;
-        if (isMoviesSelected) {
-            document.getElementById('movies-section').classList.remove('hidden');
-            document.getElementById('tv-shows-section').classList.add('hidden');
-        } else {
-            document.getElementById('movies-section').classList.add('hidden');
-            document.getElementById('tv-shows-section').classList.remove('hidden');
-        }
-        document.getElementById('search-results').classList.add('hidden');
+    const [movieResults, tvResults] = await Promise.all([
+        fetchData(`/search/movie?query=${encodedQuery}`),
+        fetchData(`/search/tv?query=${encodedQuery}`),
+    ]);
+
+    if (token !== latestSearchToken) return;
+    lastSearchQuery = query;
+    lastSearchResults = { movies: movieResults || [], tv: tvResults || [] };
+    renderSearchResults(movieResults || [], tvResults || [], query);
+}
+
+function runSearchFromInput() {
+    const query = document.getElementById('search-bar').value.trim();
+    latestSearchToken += 1;
+
+    if (query.length === 0) {
+        setSearchMode(false);
+        document.getElementById('search-results-container').innerHTML = '';
+        setSearchSummary('Start typing to find a title.');
+        return;
     }
+
+    setSearchMode(true);
+    const token = latestSearchToken;
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = window.setTimeout(() => {
+        search(query, token);
+    }, 260);
+}
+
+document.getElementById('search-bar').addEventListener('input', runSearchFromInput);
+
+document.getElementById('clear-search').addEventListener('click', () => {
+    document.getElementById('search-bar').value = '';
+    runSearchFromInput();
+    document.getElementById('search-bar').focus();
+});
+
+document.querySelectorAll('.search-filter').forEach(button => {
+    button.addEventListener('click', () => {
+        activeSearchFilter = button.dataset.filter;
+        document.querySelectorAll('.search-filter').forEach(item => {
+            item.classList.toggle('is-active', item === button);
+        });
+        const query = document.getElementById('search-bar').value.trim();
+        if (query && query === lastSearchQuery) {
+            renderSearchResults(lastSearchResults.movies, lastSearchResults.tv, query);
+        } else {
+            runSearchFromInput();
+        }
+    });
 });
 
 

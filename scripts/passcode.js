@@ -12,7 +12,10 @@ function checkPasscode() {
         window.location.href = "index.html";
     } else {
         // Show an error message
-        errorMessage.style.display = "block";
+        errorMessage.classList.remove('is-visible');
+        void errorMessage.offsetWidth;
+        errorMessage.classList.add('is-visible');
+        document.getElementById('passcode-input').select();
     }
 }
 
@@ -28,3 +31,13 @@ function verifyAccess() {
 if (!window.location.pathname.endsWith('passcode.html')) {
     verifyAccess();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('passcode-form');
+    if (!form) return;
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        checkPasscode();
+    });
+});

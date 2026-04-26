@@ -15,16 +15,30 @@
     <div class="container">
 
         <header>
-            <h1>Flix</h1>
+            <div class="brand-lockup">
+                <span class="brand-mark">F</span>
+                <div>
+                    <h1>Flix</h1>
+                    <p>Movies and series, ready when you are</p>
+                </div>
+            </div>
             <div id="search-container">
               <div id="search-wrapper">
-                <input type="text" id="search-bar" placeholder="Search...">
                 <i class="fas fa-search search-icon"></i>
+                <input type="text" id="search-bar" placeholder="Search movies or TV shows" autocomplete="off">
+                <button id="clear-search" class="hidden" type="button" aria-label="Clear search">
+                    <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div id="search-filters" class="hidden" aria-label="Search filters">
+                <button class="search-filter is-active" type="button" data-filter="all">All</button>
+                <button class="search-filter" type="button" data-filter="movie">Movies</button>
+                <button class="search-filter" type="button" data-filter="tv">TV Shows</button>
               </div>
             </div>
-            <div id="bookmark-container">
-              <i class="fas fa-bookmark icon" onclick="location.href='saved.html';"></i>
-            </div>
+            <button id="bookmark-container" type="button" aria-label="Saved items" onclick="location.href='saved.html';">
+              <i class="fas fa-bookmark icon"></i>
+            </button>
           </header>
           
         
@@ -101,12 +115,13 @@
             </div>
         </section>
         <section id="search-results" class="hidden">
-            <h2>Search Results</h2>
-            <div class="scroll-container-wrapper">
-                <button class="arrow arrow-left" onclick="scrollLeft('search-results-container')">&lt;</button>
-                <div class="scroll-container" id="search-results-container"></div>
-                <button class="arrow arrow-right" onclick="scrollRight('search-results-container')">&gt;</button>
+            <div class="section-heading">
+                <div>
+                    <h2>Search Results</h2>
+                    <p id="search-summary">Start typing to find a title.</p>
+                </div>
             </div>
+            <div class="search-results-grid" id="search-results-container"></div>
         </section>
     </div>
     </main>

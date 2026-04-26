@@ -49,6 +49,10 @@ function expandPlayerShell(active) {
   wrap.classList.toggle('iframe-collapsed', !active);
 }
 
+function goHome() {
+  window.location.href = 'index.html';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   let selectedItem;
   try {
@@ -67,9 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!selectedItem) {
     document.getElementById('content').textContent = 'No item selected.';
-    document.getElementById('back-button')?.addEventListener('click', () => {
-      window.history.back();
-    });
+    document.getElementById('back-button')?.addEventListener('click', goHome);
     return;
   }
 
@@ -136,16 +138,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadRecommendations(selectedItem.id);
   loadBookmarks();
 
-  document.getElementById('back-button')?.addEventListener('click', () => {
-    window.history.back();
-  });
+  document.getElementById('back-button')?.addEventListener('click', goHome);
 });
 
 async function loadActors(movieId) {
   try {
-    const response = await fetch(
-      `${CONFIG.API_BASE_URL}/movie/${movieId}/credits?api_key=${CONFIG.API_KEY}`
-    );
+    const response = await fetch(buildApiUrl(`/movie/${movieId}/credits`));
     const data = await response.json();
     const actors = data.cast.slice(0, 5);
     populateActorsList(actors);
@@ -178,9 +176,7 @@ function populateActorsList(actors) {
 
 async function loadRecommendations(movieId) {
   try {
-    const response = await fetch(
-      `${CONFIG.API_BASE_URL}/movie/${movieId}/recommendations?api_key=${CONFIG.API_KEY}`
-    );
+    const response = await fetch(buildApiUrl(`/movie/${movieId}/recommendations`));
     const data = await response.json();
     const recommendations = data.results.slice(0, 10);
     populateRecommendationsList(recommendations);
@@ -229,15 +225,27 @@ function populateRecommendationsList(recommendations) {
 }
 
 function displayItemDetails(item) {
-  document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${
-    item.backdrop_path || item.poster_path
-  })`;
-  document.getElementById('poster').src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  const imagePath = item.backdrop_path || item.poster_path;
+  if (imagePath) {
+    document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${imagePath})`;
+  }
+  const poster = document.getElementById('poster');
+  if (item.poster_path) {
+    poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+    poster.alt = item.title || item.name || 'Poster';
+  } else {
+    poster.removeAttribute('src');
+    poster.alt = '';
+  }
   document.getElementById('title').textContent = item.title || item.name;
-  document.getElementById('description').textContent = item.overview;
-  document.getElementById('rating').textContent = `Rating: ${item.vote_average}`;
+  document.getElementById('description').textContent =
+    item.overview || 'No overview available.';
+  document.getElementById('rating').textContent =
+    typeof item.vote_average === 'number'
+      ? `Rating: ${item.vote_average.toFixed(1)}`
+      : 'Rating: -';
   document.getElementById('release-date').textContent = `Release Date: ${
-    item.release_date || item.first_air_date
+    item.release_date || item.first_air_date || '-'
   }`;
 }
 
@@ -305,11 +313,18 @@ function showPopupMessage(message) {
 }
 
 async function fetchData(endpoint) {
-  const response = await fetch(
-    `${CONFIG.API_BASE_URL}${endpoint}&api_key=${CONFIG.API_KEY}`
-  );
+  const response = await fetch(buildApiUrl(endpoint));
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
+}
+
+function buildApiUrl(endpoint) {
+  let url = `${CONFIG.API_BASE_URL}${endpoint}`;
+  if (CONFIG.API_KEY) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    url = `${url}${separator}api_key=${CONFIG.API_KEY}`;
+  }
+  return url;
 }
 
 function createCard(item, type) {
@@ -318,7 +333,10 @@ function createCard(item, type) {
   card.dataset.id = item.id;
   card.dataset.type = type;
   const poster = document.createElement('img');
-  poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  if (item.poster_path) {
+    poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  }
+  poster.alt = item.title || item.name || 'Poster';
   poster.loading = 'lazy';
   card.appendChild(poster);
   const playButton = document.createElement('div');

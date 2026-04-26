@@ -1,6 +1,6 @@
 /**
- * Rotates iframe sources when a host never completes loading (common when embeds hang).
- * Cross-origin frames cannot be inspected; we treat a timely <code>load</code> as success.
+ * Rotates iframe sources when a host never completes loading.
+ * Cross-origin frames cannot be inspected; a timely non-blank load is treated as success.
  */
 
 import { serverSlotLabel } from './embedProviders.js';
@@ -10,7 +10,7 @@ const DEFAULT_ATTEMPT_MS = 13000;
 /**
  * @param {HTMLIFrameElement} iframe
  * @param {object} opts
- * @param {string[]} opts.orderedKeys — include preferred host first (see getFailoverOrder)
+ * @param {string[]} opts.orderedKeys - include preferred host first.
  * @param {(key: string) => string | null} opts.buildUrl
  * @param {number} [opts.attemptMs]
  * @param {(text: string) => void} [opts.onStatus]
@@ -19,7 +19,7 @@ const DEFAULT_ATTEMPT_MS = 13000;
  */
 export function playWithFailover(iframe, opts) {
   const {
-    orderedKeys,
+    orderedKeys = [],
     buildUrl,
     attemptMs = DEFAULT_ATTEMPT_MS,
     onStatus,
@@ -30,6 +30,7 @@ export function playWithFailover(iframe, opts) {
   let attemptIndex = 0;
   let loadHandler = null;
   let timeoutId = null;
+  let activeAttemptId = 0;
 
   function cleanupListeners() {
     if (timeoutId != null) {
@@ -42,12 +43,17 @@ export function playWithFailover(iframe, opts) {
     }
   }
 
+  function finish(key, reason) {
+    cleanupListeners();
+    onStatus?.('');
+    onResolved?.(key, reason);
+  }
+
   function run() {
     if (cancelled) return;
 
     if (attemptIndex >= orderedKeys.length) {
-      onStatus?.('');
-      onResolved?.(null, 'exhausted');
+      finish(null, 'exhausted');
       return;
     }
 
@@ -60,21 +66,23 @@ export function playWithFailover(iframe, opts) {
       return;
     }
 
+    const attemptId = activeAttemptId + 1;
+    activeAttemptId = attemptId;
+
     onStatus?.(
-      `Trying ${serverSlotLabel(key)} (${attemptIndex + 1}/${orderedKeys.length})…`
+      `Trying ${serverSlotLabel(key)} (${attemptIndex + 1}/${orderedKeys.length})...`
     );
 
     loadHandler = () => {
-      if (cancelled) return;
-      cleanupListeners();
-      onStatus?.('');
-      onResolved?.(key, 'load');
+      if (cancelled || attemptId !== activeAttemptId) return;
+      if (!iframe.src || iframe.src === 'about:blank') return;
+      finish(key, 'load');
     };
 
     iframe.addEventListener('load', loadHandler, { once: true });
 
     timeoutId = window.setTimeout(() => {
-      if (cancelled) return;
+      if (cancelled || attemptId !== activeAttemptId) return;
       cleanupListeners();
       attemptIndex += 1;
       iframe.src = 'about:blank';
@@ -88,6 +96,8 @@ export function playWithFailover(iframe, opts) {
 
   return () => {
     cancelled = true;
+    activeAttemptId += 1;
     cleanupListeners();
+    onResolved?.(null, 'cancelled');
   };
 }

@@ -24,6 +24,10 @@ const playerState = {
 
 let cancelFailover = null;
 
+function goHome() {
+  window.location.href = 'index.html';
+}
+
 function setEmbedStatusLine(text) {
   const el = document.getElementById('embed-status-text');
   if (el) el.textContent = text || '';
@@ -114,24 +118,18 @@ async function fetchJson(url) {
 }
 
 async function fetchShow(tvId) {
-  const data = await fetchJson(
-    `${CONFIG.API_BASE_URL}/tv/${tvId}?api_key=${CONFIG.API_KEY}`
-  );
+  const data = await fetchJson(buildApiUrl(`/tv/${tvId}`));
   return data;
 }
 
 async function fetchSeasonsMeta(tvId) {
-  const data = await fetchJson(
-    `${CONFIG.API_BASE_URL}/tv/${tvId}?api_key=${CONFIG.API_KEY}`
-  );
+  const data = await fetchJson(buildApiUrl(`/tv/${tvId}`));
   const seasons = data.seasons || [];
   return filterNoise(seasons).filter((s) => s.season_number !== 0);
 }
 
 async function fetchEpisodes(tvId, seasonNumber) {
-  const data = await fetchJson(
-    `${CONFIG.API_BASE_URL}/tv/${tvId}/season/${seasonNumber}?api_key=${CONFIG.API_KEY}`
-  );
+  const data = await fetchJson(buildApiUrl(`/tv/${tvId}/season/${seasonNumber}`));
   return filterNoise(data.episodes || []);
 }
 
@@ -359,9 +357,7 @@ function wireControls(show) {
 }
 
 async function fetchActors(tvId) {
-  const data = await fetchJson(
-    `${CONFIG.API_BASE_URL}/tv/${tvId}/credits?api_key=${CONFIG.API_KEY}`
-  );
+  const data = await fetchJson(buildApiUrl(`/tv/${tvId}/credits`));
   return filterNoise(data.cast || []);
 }
 
@@ -391,9 +387,7 @@ function populateActors(actors) {
 }
 
 async function fetchRecommendations(tvId) {
-  const data = await fetchJson(
-    `${CONFIG.API_BASE_URL}/tv/${tvId}/recommendations?api_key=${CONFIG.API_KEY}`
-  );
+  const data = await fetchJson(buildApiUrl(`/tv/${tvId}/recommendations`));
   return filterNoise(data.results || []);
 }
 
@@ -577,9 +571,23 @@ function showPopupMessage(message) {
 }
 
 async function fetchData(endpoint) {
-  const response = await fetch(`${apiBaseURL}${endpoint}&api_key=${apiKey}`);
+  let url = `${apiBaseURL}${endpoint}`;
+  if (apiKey) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    url = `${url}${separator}api_key=${apiKey}`;
+  }
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
   return response.json();
+}
+
+function buildApiUrl(endpoint) {
+  let url = `${CONFIG.API_BASE_URL}${endpoint}`;
+  if (CONFIG.API_KEY) {
+    const separator = endpoint.includes('?') ? '&' : '?';
+    url = `${url}${separator}api_key=${CONFIG.API_KEY}`;
+  }
+  return url;
 }
 
 function createCard(item, type) {
@@ -589,7 +597,10 @@ function createCard(item, type) {
   card.dataset.type = type;
 
   const poster = document.createElement('img');
-  poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  if (item.poster_path) {
+    poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+  }
+  poster.alt = item.title || item.name || 'Poster';
   poster.loading = 'lazy';
   card.appendChild(poster);
 
@@ -642,9 +653,7 @@ function displayBookmarkedItems() {
   });
 }
 
-document.getElementById('back-button')?.addEventListener('click', () => {
-  window.history.back();
-});
+document.getElementById('back-button')?.addEventListener('click', goHome);
 
 document.addEventListener('DOMContentLoaded', async () => {
   let selectedItem;

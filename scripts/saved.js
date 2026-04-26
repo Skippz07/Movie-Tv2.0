@@ -2,6 +2,25 @@ import CONFIG from './config.js';
 
 const apiBaseURL = CONFIG.API_BASE_URL;
 const apiKey = CONFIG.API_KEY;
+const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const PLACEHOLDER_POSTER =
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%23151821"/><text x="50%" y="50%" fill="%238b93a6" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">No poster</text></svg>';
+
+function typeLabel(type) {
+    return type === 'tv' ? 'Series' : 'Movie';
+}
+
+function formatYear(item, type) {
+    const rawDate = item.release_date || item.first_air_date;
+    if (!rawDate) return typeLabel(type);
+    const year = new Date(rawDate).getFullYear();
+    return Number.isFinite(year) ? String(year) : typeLabel(type);
+}
+
+function ratingLabel(item) {
+    const rating = Number(item.vote_average || 0);
+    return rating > 0 ? rating.toFixed(1) : 'New';
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     displayBookmarkedItems();
@@ -30,7 +49,12 @@ function displayBookmarkedItems() {
 
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`${apiBaseURL}${endpoint}&api_key=${apiKey}`);
+        let url = `${apiBaseURL}${endpoint}`;
+        if (apiKey) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            url = `${url}${separator}api_key=${apiKey}`;
+        }
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -49,7 +73,10 @@ function createCard(item, type) {
     card.dataset.type = type;
 
     const poster = document.createElement('img');
-    poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+    poster.src = item.poster_path ? `${IMAGE_BASE}${item.poster_path}` : PLACEHOLDER_POSTER;
+    poster.alt = item.title || item.name || 'Poster';
+    poster.loading = 'lazy';
+    poster.decoding = 'async';
     card.appendChild(poster);
 
     const playButton = document.createElement('div');
@@ -60,7 +87,20 @@ function createCard(item, type) {
     const title = document.createElement('div');
     title.classList.add('title');
     title.textContent = item.title || item.name;
-    card.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.classList.add('card-meta');
+    meta.innerHTML = `
+        <span>${typeLabel(type)}</span>
+        <span>${formatYear(item, type)}</span>
+        <span><i class="fas fa-star"></i> ${ratingLabel(item)}</span>
+    `;
+
+    const info = document.createElement('div');
+    info.classList.add('card-info');
+    info.appendChild(title);
+    info.appendChild(meta);
+    card.appendChild(info);
 
     const bookmarkIcon = document.createElement('i');
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon', 'bookmarked');
