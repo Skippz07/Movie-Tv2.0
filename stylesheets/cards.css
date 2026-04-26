@@ -36,6 +36,60 @@
   filter: blur(6px);
 }
 
+.card-skeleton {
+  min-height: 267px;
+  pointer-events: none;
+}
+
+.skeleton-poster-tile,
+.skeleton-card-info span,
+.skeleton-card-info small {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 220% 100%;
+  animation: card-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-poster-tile {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+}
+
+.skeleton-card-info {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+}
+
+.skeleton-card-info span {
+  height: 14px;
+  width: 82%;
+  border-radius: 999px;
+}
+
+.skeleton-card-info small {
+  height: 10px;
+  width: 58%;
+  margin-top: 9px;
+  border-radius: 999px;
+}
+
+@keyframes card-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .card:hover {
   transform: translateY(-6px) scale(1.015);
   border-color: rgba(255, 56, 88, 0.5);

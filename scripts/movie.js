@@ -10,6 +10,7 @@ import { playWithFailover } from './embedFailover.js';
 
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const MOVIE_SERVER_KEY = (id) => `movieWatchServer:${id}`;
+const CONTINUE_WATCHING_KEY = 'continueWatching';
 
 function readMovieServer(tmdbId) {
   try {
@@ -53,6 +54,23 @@ function goHome() {
   window.location.href = 'index.html';
 }
 
+function addContinueWatchingItem(item, type) {
+  try {
+    const current = JSON.parse(localStorage.getItem(CONTINUE_WATCHING_KEY) || '[]');
+    const list = Array.isArray(current) ? current : [];
+    const compact = { ...item, type, media_type: type, watchedAt: Date.now() };
+    const next = [
+      compact,
+      ...list.filter(
+        (entry) => !(Number(entry.id) === Number(item.id) && entry.type === type)
+      ),
+    ].slice(0, 14);
+    localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(next));
+  } catch {
+    // Continue watching is a convenience feature; playback should never depend on it.
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   let selectedItem;
   try {
@@ -79,6 +97,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = 'tvshow.html';
     return;
   }
+
+  addContinueWatchingItem(selectedItem, 'movie');
 
   currentServer = readMovieServer(selectedItem.id);
   fillServerSelect(serverSelect, currentServer);

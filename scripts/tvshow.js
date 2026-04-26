@@ -13,6 +13,7 @@ const apiKey = CONFIG.API_KEY;
 
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const PROGRESS_KEY = (tvId) => `tvWatchProgress:${tvId}`;
+const CONTINUE_WATCHING_KEY = 'continueWatching';
 
 const playerState = {
   tvId: null,
@@ -26,6 +27,23 @@ let cancelFailover = null;
 
 function goHome() {
   window.location.href = 'index.html';
+}
+
+function addContinueWatchingItem(item, type) {
+  try {
+    const current = JSON.parse(localStorage.getItem(CONTINUE_WATCHING_KEY) || '[]');
+    const list = Array.isArray(current) ? current : [];
+    const compact = { ...item, type, media_type: type, watchedAt: Date.now() };
+    const next = [
+      compact,
+      ...list.filter(
+        (entry) => !(Number(entry.id) === Number(item.id) && entry.type === type)
+      ),
+    ].slice(0, 14);
+    localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(next));
+  } catch {
+    // Continue watching should not block detail loading.
+  }
 }
 
 function setEmbedStatusLine(text) {
@@ -681,6 +699,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = 'movie.html';
     return;
   }
+
+  addContinueWatchingItem(selectedItem, 'tv');
 
   playerState.tvId = selectedItem.id;
   const stored = readStoredProgress(playerState.tvId);

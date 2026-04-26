@@ -61,6 +61,21 @@
         </div>
     </div>
     <main>
+        <section id="continue-watching-section" class="hidden">
+            <div class="section-heading row-heading">
+                <div>
+                    <h2>Continue Watching</h2>
+                    <p>Titles you opened recently</p>
+                </div>
+                <button id="clear-continue" class="soft-action" type="button">Clear</button>
+            </div>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('continue-watching')">&lt;</button>
+                <div class="scroll-container" id="continue-watching"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('continue-watching')">&gt;</button>
+            </div>
+        </section>
+
         <div class="selector">
             <div id="slider">
                 <input type="radio" name="slider" id="movies-selector" checked>
@@ -70,6 +85,40 @@
                 <div class="slider-bar"></div>
             </div>
         </div>
+        <section id="browse-filters" aria-label="Browse filters">
+            <div class="filter-field">
+                <label for="genre-filter">Genre</label>
+                <select id="genre-filter">
+                    <option value="">All genres</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="year-filter">Year</label>
+                <select id="year-filter">
+                    <option value="">Any year</option>
+                </select>
+            </div>
+            <button id="apply-filters" class="filter-button" type="button">
+                <i class="fas fa-sliders-h"></i>
+                Apply
+            </button>
+            <button id="clear-filters" class="soft-action" type="button">Reset</button>
+        </section>
+
+        <section id="filtered-section" class="hidden">
+            <div class="section-heading row-heading">
+                <div>
+                    <h2>Filtered Picks</h2>
+                    <p id="filtered-summary">Results matching your filters</p>
+                </div>
+            </div>
+            <div class="scroll-container-wrapper">
+                <button class="arrow arrow-left" onclick="scrollLeft('filtered-results')">&lt;</button>
+                <div class="scroll-container" id="filtered-results"></div>
+                <button class="arrow arrow-right" onclick="scrollRight('filtered-results')">&gt;</button>
+            </div>
+        </section>
+
         <section id="movies-section">
             <h2>Now Playing Movies</h2>
             <div class="scroll-container-wrapper">

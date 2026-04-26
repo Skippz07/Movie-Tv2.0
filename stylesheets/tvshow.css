@@ -601,19 +601,27 @@ body, html {
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
     #content {
-        padding: 15px;
-        margin: 40px auto;
+        padding: 84px 0 18px;
+        margin: 0 auto;
         width: min(100% - 24px, 1120px);
+    }
+
+    #back-button {
+        top: 16px;
+        left: 12px;
+        padding: 10px 14px;
+        border-radius: 999px;
     }
 
     #info-container {
         flex-direction: column;
         align-items: center;
         margin-bottom: 15px;
+        padding: 16px;
     }
 
     #poster {
-        width: 250px;
+        width: min(58vw, 210px);
         margin-bottom: 15px;
     }
 
@@ -621,10 +629,51 @@ body, html {
         max-width: 100%;
         font-size: 16px;
         margin-left: 0;
+        text-align: left;
     }
 
     #details h1 {
-        font-size: 20px;
+        font-size: clamp(1.55rem, 8vw, 2.4rem);
+        text-align: center;
+    }
+
+    #info-metadata {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+    }
+
+    #rating,
+    #release-date {
+        margin-right: 0;
+        font-size: 0.95rem;
+    }
+
+    #description {
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }
+
+    #play-button {
+        width: 100%;
+        min-height: 46px;
+        margin-top: 8px;
+    }
+
+    .controls-row {
+        gap: 10px;
+    }
+
+    #server-selection,
+    #season-episode-selection {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    #server-select,
+    #season-select {
+        flex: 1;
+        min-width: 0;
     }
 
     #season-episode-selection select {
@@ -637,14 +686,14 @@ body, html {
     }
 
     .recommendation-item {
-        width: 180px;
+        width: 150px;
     }
 }
 
 @media (max-width: 480px) {
     #content {
-        padding: 10px;
-        margin: 30px auto;
+        padding: 78px 0 14px;
+        margin: 0 auto;
         width: min(100% - 20px, 1120px);
     }
 
@@ -655,7 +704,7 @@ body, html {
     }
 
     #poster {
-        width: 200px;
+        width: min(54vw, 180px);
         margin-bottom: 10px;
     }
 
@@ -665,7 +714,7 @@ body, html {
     }
 
     #details h1 {
-        font-size: 18px;
+        font-size: clamp(1.45rem, 9vw, 2rem);
     }
 
     #season-episode-selection select {
@@ -678,6 +727,35 @@ body, html {
     }
 
     .recommendation-item {
-        width: 80px;
+        width: calc(50% - 10px);
+    }
+
+    .episode-item {
+        display: grid;
+        grid-template-columns: 34px minmax(88px, 112px) minmax(0, 1fr);
+        align-items: start;
+        gap: 8px;
+        padding: 9px;
+    }
+
+    .episode-number {
+        margin-right: 0;
+        font-size: 1rem;
+    }
+
+    .episode-image {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        margin-right: 0;
+    }
+
+    .episode-title {
+        font-size: 0.92rem;
+    }
+
+    .episode-overview {
+        -webkit-line-clamp: 3;
+        font-size: 0.82rem;
     }
 }

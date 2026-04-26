@@ -8,8 +8,11 @@ let latestSearchToken = 0;
 let searchDebounceTimer = null;
 let lastSearchQuery = '';
 let lastSearchResults = { movies: [], tv: [] };
+let activeBrowseType = 'movie';
+let genreCache = { movie: [], tv: [] };
 
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const CONTINUE_WATCHING_KEY = 'continueWatching';
 const PLACEHOLDER_POSTER =
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%23151821"/><text x="50%" y="50%" fill="%238b93a6" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">No poster</text></svg>';
 
@@ -70,6 +73,7 @@ document.getElementById('movies-selector').addEventListener('click', async () =>
     document.getElementById('tv-shows-section').classList.add('hidden');
     document.getElementById('movies-selector').classList.add('selected');
     document.getElementById('tv-selector').classList.remove('selected');
+    await updateBrowseType('movie');
     await displayMovies();
 });
 
@@ -78,6 +82,7 @@ document.getElementById('tv-selector').addEventListener('click', async () => {
     document.getElementById('tv-shows-section').classList.remove('hidden');
     document.getElementById('movies-selector').classList.remove('selected');
     document.getElementById('tv-selector').classList.add('selected');
+    await updateBrowseType('tv');
     await displayTVShows();
 });
 
@@ -100,11 +105,60 @@ async function fetchData(endpoint) {
     }
 }
 
+async function fetchJson(endpoint) {
+    try {
+        let url = buildApiUrl(endpoint);
+        if (apiKey) {
+            url = `${url}&api_key=${apiKey}`;
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    } catch (error) {
+        console.error('Failed to fetch data:', error);
+        return null;
+    }
+}
+
 function buildApiUrl(endpoint) {
     const [path, query = ''] = endpoint.split('?');
     const params = new URLSearchParams(query);
     params.set('path', path);
     return `${apiBaseURL}?${params.toString()}`;
+}
+
+function createSkeletonCard() {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'card card-skeleton';
+    skeleton.innerHTML = `
+        <div class="skeleton-poster-tile"></div>
+        <div class="skeleton-card-info">
+            <span></span>
+            <small></small>
+        </div>
+    `;
+    return skeleton;
+}
+
+function setRowSkeleton(containerId, count = 8) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 0; i < count; i += 1) {
+        container.appendChild(createSkeletonCard());
+    }
+}
+
+function renderRow(containerId, items, type) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    items.forEach(item => {
+        container.appendChild(createCard(item, type));
+    });
+    updateArrows(containerId);
 }
 
 function createCard(item, type) {
@@ -161,11 +215,53 @@ function createCard(item, type) {
     card.appendChild(bookmarkIcon);
 
     card.addEventListener('click', () => {
+        addContinueWatchingItem(item, type);
         localStorage.setItem('selectedItem', JSON.stringify(item));
         window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
     });
 
     return card;
+}
+
+function addContinueWatchingItem(item, type) {
+    const current = readContinueWatching();
+    const compact = {
+        ...item,
+        type,
+        media_type: type,
+        watchedAt: Date.now(),
+    };
+    const next = [
+        compact,
+        ...current.filter(entry => !(Number(entry.id) === Number(item.id) && entry.type === type)),
+    ].slice(0, 14);
+    localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(next));
+}
+
+function readContinueWatching() {
+    try {
+        const raw = localStorage.getItem(CONTINUE_WATCHING_KEY);
+        const parsed = JSON.parse(raw || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function displayContinueWatching() {
+    const section = document.getElementById('continue-watching-section');
+    const container = document.getElementById('continue-watching');
+    if (!section || !container) return;
+
+    const items = readContinueWatching();
+    section.classList.toggle('hidden', items.length === 0);
+    container.innerHTML = '';
+
+    items.forEach(item => {
+        container.appendChild(createCard(item, item.type || item.media_type || 'movie'));
+    });
+
+    if (items.length) updateArrows('continue-watching');
 }
 
 
@@ -247,65 +343,35 @@ function displayBookmarkedItems() {
 }
 
 async function displayMovies() {
-    const nowPlayingMovies = await fetchData('/movie/now_playing?');
-    const popularMovies = await fetchData('/movie/popular?');
-    const topRatedMovies = await fetchData('/movie/top_rated?');
+    setRowSkeleton('now-playing-movies');
+    setRowSkeleton('popular-movies');
+    setRowSkeleton('top-rated-movies');
 
-    const nowPlayingMoviesContainer = document.getElementById('now-playing-movies');
-    nowPlayingMoviesContainer.innerHTML = '';
-    nowPlayingMovies.forEach(movie => {
-        const card = createCard(movie, 'movie');
-        nowPlayingMoviesContainer.appendChild(card);
-    });
+    const [nowPlayingMovies, popularMovies, topRatedMovies] = await Promise.all([
+        fetchData('/movie/now_playing?'),
+        fetchData('/movie/popular?'),
+        fetchData('/movie/top_rated?'),
+    ]);
 
-    const popularMoviesContainer = document.getElementById('popular-movies');
-    popularMoviesContainer.innerHTML = '';
-    popularMovies.forEach(movie => {
-        const card = createCard(movie, 'movie');
-        popularMoviesContainer.appendChild(card);
-    });
-
-    const topRatedMoviesContainer = document.getElementById('top-rated-movies');
-    topRatedMoviesContainer.innerHTML = '';
-    topRatedMovies.forEach(movie => {
-        const card = createCard(movie, 'movie');
-        topRatedMoviesContainer.appendChild(card);
-    });
-
-    updateArrows('now-playing-movies');
-    updateArrows('popular-movies');
-    updateArrows('top-rated-movies');
+    renderRow('now-playing-movies', nowPlayingMovies, 'movie');
+    renderRow('popular-movies', popularMovies, 'movie');
+    renderRow('top-rated-movies', topRatedMovies, 'movie');
 }
 
 async function displayTVShows() {
-    const onTheAirTV = await fetchData('/tv/on_the_air?');
-    const popularTV = await fetchData('/tv/popular?');
-    const topRatedTV = await fetchData('/tv/top_rated?');
+    setRowSkeleton('on-the-air');
+    setRowSkeleton('popular-tv');
+    setRowSkeleton('top-rated-tv');
 
-    const onTheAirContainer = document.getElementById('on-the-air');
-    onTheAirContainer.innerHTML = '';
-    onTheAirTV.forEach(tvShow => {
-        const card = createCard(tvShow, 'tv');
-        onTheAirContainer.appendChild(card);
-    });
+    const [onTheAirTV, popularTV, topRatedTV] = await Promise.all([
+        fetchData('/tv/on_the_air?'),
+        fetchData('/tv/popular?'),
+        fetchData('/tv/top_rated?'),
+    ]);
 
-    const popularTVContainer = document.getElementById('popular-tv');
-    popularTVContainer.innerHTML = '';
-    popularTV.forEach(tvShow => {
-        const card = createCard(tvShow, 'tv');
-        popularTVContainer.appendChild(card);
-    });
-
-    const topRatedTVContainer = document.getElementById('top-rated-tv');
-    topRatedTVContainer.innerHTML = '';
-    topRatedTV.forEach(tvShow => {
-        const card = createCard(tvShow, 'tv');
-        topRatedTVContainer.appendChild(card);
-    });
-
-    updateArrows('on-the-air');
-    updateArrows('popular-tv');
-    updateArrows('top-rated-tv');
+    renderRow('on-the-air', onTheAirTV, 'tv');
+    renderRow('popular-tv', popularTV, 'tv');
+    renderRow('top-rated-tv', topRatedTV, 'tv');
 }
 
 async function displayFeaturedTrendingTVShow(trendingTV) {
@@ -326,6 +392,7 @@ async function displayFeaturedTrendingTVShow(trendingTV) {
     featuredDescription.textContent = featuredShow.overview || 'No overview available.';
 
     document.getElementById('play-button').onclick = () => {
+        addContinueWatchingItem(featuredShow, 'tv');
         localStorage.setItem('selectedItem', JSON.stringify(featuredShow));
         window.location.href = 'tvshow.html';
     };
@@ -369,6 +436,7 @@ async function displayTrendingTVShowsList() {
         info.appendChild(description);
 
         card.addEventListener('click', () => {
+            addContinueWatchingItem(tvShow, 'tv');
             localStorage.setItem('selectedItem', JSON.stringify(tvShow));
             window.location.href = 'tvshow.html';
         });
@@ -382,9 +450,113 @@ async function displayTrendingTVShowsList() {
     }, 5000);
 }
 
+function populateYearFilter() {
+    const yearFilter = document.getElementById('year-filter');
+    if (!yearFilter) return;
+    const currentYear = new Date().getFullYear();
+    yearFilter.innerHTML = '<option value="">Any year</option>';
+    for (let year = currentYear + 1; year >= 1970; year -= 1) {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year);
+        yearFilter.appendChild(option);
+    }
+}
+
+async function populateGenreFilter(type = activeBrowseType) {
+    const genreFilter = document.getElementById('genre-filter');
+    if (!genreFilter) return;
+
+    genreFilter.innerHTML = '<option value="">All genres</option>';
+    if (!genreCache[type].length) {
+        const data = await fetchJson(`/genre/${type}/list?`);
+        genreCache[type] = data?.genres || [];
+    }
+
+    genreCache[type].forEach(genre => {
+        const option = document.createElement('option');
+        option.value = String(genre.id);
+        option.textContent = genre.name;
+        genreFilter.appendChild(option);
+    });
+}
+
+function filterSummary(type, genreId, year) {
+    const genre = genreCache[type].find(item => String(item.id) === String(genreId));
+    const parts = [
+        type === 'tv' ? 'TV shows' : 'movies',
+        genre ? genre.name : '',
+        year || '',
+    ].filter(Boolean);
+    return parts.join(' • ');
+}
+
+async function displayFilteredResults() {
+    const genreId = document.getElementById('genre-filter')?.value || '';
+    const year = document.getElementById('year-filter')?.value || '';
+    const section = document.getElementById('filtered-section');
+    const summary = document.getElementById('filtered-summary');
+
+    if (!section) return;
+    if (!genreId && !year) {
+        section.classList.add('hidden');
+        document.getElementById('filtered-results').innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+    setRowSkeleton('filtered-results', 8);
+    if (summary) summary.textContent = filterSummary(activeBrowseType, genreId, year);
+
+    const params = new URLSearchParams({
+        sort_by: 'popularity.desc',
+        include_adult: 'false',
+    });
+    if (genreId) params.set('with_genres', genreId);
+    if (year) {
+        params.set(activeBrowseType === 'tv' ? 'first_air_date_year' : 'primary_release_year', year);
+    }
+
+    const endpoint =
+        activeBrowseType === 'tv'
+            ? `/discover/tv?${params.toString()}`
+            : `/discover/movie?${params.toString()}`;
+    const results = await fetchData(endpoint);
+    renderRow('filtered-results', results, activeBrowseType);
+}
+
+async function updateBrowseType(type) {
+    activeBrowseType = type;
+    await populateGenreFilter(type);
+    await displayFilteredResults();
+}
+
+function setupBrowseFilters() {
+    populateYearFilter();
+    populateGenreFilter(activeBrowseType);
+
+    document.getElementById('apply-filters')?.addEventListener('click', displayFilteredResults);
+    document.getElementById('genre-filter')?.addEventListener('change', displayFilteredResults);
+    document.getElementById('year-filter')?.addEventListener('change', displayFilteredResults);
+    document.getElementById('clear-filters')?.addEventListener('click', () => {
+        document.getElementById('genre-filter').value = '';
+        document.getElementById('year-filter').value = '';
+        displayFilteredResults();
+    });
+}
+
 function setSearchMode(isSearching) {
     document.body.classList.toggle('search-active', isSearching);
     document.querySelector('.selector').classList.toggle('hidden', isSearching);
+    document.getElementById('browse-filters').classList.toggle('hidden', isSearching);
+    document.getElementById('continue-watching-section').classList.toggle(
+        'hidden',
+        isSearching || readContinueWatching().length === 0
+    );
+    document.getElementById('filtered-section').classList.toggle(
+        'hidden',
+        isSearching || (!document.getElementById('genre-filter')?.value && !document.getElementById('year-filter')?.value)
+    );
     document.getElementById('movies-section').classList.toggle('hidden', isSearching || !document.getElementById('movies-selector').checked);
     document.getElementById('tv-shows-section').classList.toggle('hidden', isSearching || document.getElementById('movies-selector').checked);
     document.getElementById('search-results').classList.toggle('hidden', !isSearching);
@@ -495,6 +667,8 @@ document.querySelectorAll('.search-filter').forEach(button => {
 
 
 document.addEventListener('DOMContentLoaded', async () => {
+    setupBrowseFilters();
+    displayContinueWatching();
     await displayMovies();
     await displayTVShows();
     await displayTrendingTVShowsList();
@@ -513,6 +687,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const containerId = this.closest('.scroll-container-wrapper').querySelector('.scroll-container').id;
             scrollRight(containerId);
         });
+    });
+
+    document.getElementById('clear-continue')?.addEventListener('click', () => {
+        localStorage.removeItem(CONTINUE_WATCHING_KEY);
+        displayContinueWatching();
     });
 });
 
