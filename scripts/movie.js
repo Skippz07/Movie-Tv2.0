@@ -319,10 +319,12 @@ async function fetchData(endpoint) {
 }
 
 function buildApiUrl(endpoint) {
-  let url = `${CONFIG.API_BASE_URL}${endpoint}`;
+  const [path, query = ''] = endpoint.split('?');
+  const params = new URLSearchParams(query);
+  params.set('path', path);
+  let url = `${CONFIG.API_BASE_URL}?${params.toString()}`;
   if (CONFIG.API_KEY) {
-    const separator = endpoint.includes('?') ? '&' : '?';
-    url = `${url}${separator}api_key=${CONFIG.API_KEY}`;
+    url = `${url}&api_key=${CONFIG.API_KEY}`;
   }
   return url;
 }

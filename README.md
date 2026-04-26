@@ -22,7 +22,7 @@ The browser now calls `/api/tmdb/...`; the real TMDB key stays in the server env
 This repo is Vercel-ready. Vercel serves the static HTML/CSS/JS and runs the TMDB proxy from:
 
 ```text
-api/tmdb/[...path].js
+api/tmdb.js
 ```
 
 In Vercel project settings, add this environment variable for Production and Preview:

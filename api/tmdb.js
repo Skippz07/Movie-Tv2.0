@@ -21,12 +21,13 @@ export default async function handler(req, res) {
     return;
   }
 
-  const pathParts = Array.isArray(req.query.path)
-    ? req.query.path
-    : [req.query.path].filter(Boolean);
-  const tmdbPath = `/${pathParts.map(encodeURIComponent).join('/')}`;
-  const targetUrl = new URL(`${TMDB_ORIGIN}${tmdbPath}`);
+  const tmdbPath = typeof req.query.path === 'string' ? req.query.path : '';
+  if (!tmdbPath.startsWith('/')) {
+    res.status(400).json({ error: 'Missing TMDB path.' });
+    return;
+  }
 
+  const targetUrl = new URL(`${TMDB_ORIGIN}${tmdbPath}`);
   applyQueryParams(targetUrl, req.query);
   targetUrl.searchParams.set('api_key', apiKey);
 

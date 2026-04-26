@@ -49,10 +49,9 @@ function displayBookmarkedItems() {
 
 async function fetchData(endpoint) {
     try {
-        let url = `${apiBaseURL}${endpoint}`;
+        let url = buildApiUrl(endpoint);
         if (apiKey) {
-            const separator = endpoint.includes('?') ? '&' : '?';
-            url = `${url}${separator}api_key=${apiKey}`;
+            url = `${url}&api_key=${apiKey}`;
         }
         const response = await fetch(url);
         if (!response.ok) {
@@ -64,6 +63,13 @@ async function fetchData(endpoint) {
         console.error('Failed to fetch data:', error);
         return null;
     }
+}
+
+function buildApiUrl(endpoint) {
+    const [path, query = ''] = endpoint.split('?');
+    const params = new URLSearchParams(query);
+    params.set('path', path);
+    return `${apiBaseURL}?${params.toString()}`;
 }
 
 function createCard(item, type) {

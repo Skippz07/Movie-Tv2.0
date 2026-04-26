@@ -42,11 +42,13 @@ async function proxyTmdb(req, res) {
   }
 
   const incomingUrl = new URL(req.url, `http://${req.headers.host}`);
-  const tmdbPath = incomingUrl.pathname.replace(/^\/api\/tmdb/, '') || '/';
+  const explicitPath = incomingUrl.searchParams.get('path');
+  const tmdbPath =
+    explicitPath || incomingUrl.pathname.replace(/^\/api\/tmdb/, '') || '/';
   const targetUrl = new URL(`${TMDB_ORIGIN}${tmdbPath}`);
 
   incomingUrl.searchParams.forEach((value, key) => {
-    if (key.toLowerCase() !== 'api_key') {
+    if (key !== 'path' && key.toLowerCase() !== 'api_key') {
       targetUrl.searchParams.set(key, value);
     }
   });
