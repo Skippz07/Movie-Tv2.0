@@ -41,19 +41,16 @@ export const TV_EMBED_URL = {
   vidlink: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}`,
 };
 
-/**
- * Five user-facing servers (shown as Server 1–5). SuperEmbed is first = default.
- * @type {readonly string[]}
- */
+/** Primary player providers. The first provider is the default. */
 export const PRIMARY_SERVER_KEYS = [
+  'vidlink',
   'superembed',
   'vidsrcpro',
   'vidsrcvip',
   'autoembed',
-  'vidlink',
 ];
 
-export const DEFAULT_USER_SERVER = 'superembed';
+export const DEFAULT_USER_SERVER = 'vidlink';
 
 /** Full fallback list for any code paths that still reference extended order. */
 export const FAILOVER_ORDER = [
@@ -86,10 +83,7 @@ export function embedLabel(key) {
   return LABELS[key] || key;
 }
 
-/** UI label: "Server 1" … "Server 5" for primary slots; otherwise human name. */
 export function serverSlotLabel(key) {
-  const i = PRIMARY_SERVER_KEYS.indexOf(key);
-  if (i >= 0) return `Server ${i + 1}`;
   return embedLabel(key);
 }
 
@@ -118,9 +112,7 @@ export function buildTvEmbedUrl(key, tmdbId, season, episode) {
   }
 }
 
-/**
- * Rotate among the five primary slots (Server 1–5), starting from preference.
- */
+/** Rotate among the primary providers, starting from preference. */
 export function getFailoverOrder(preferredKey) {
   const preferred = normalizePrimaryServer(preferredKey);
   const keys = PRIMARY_SERVER_KEYS.filter(
@@ -140,11 +132,11 @@ export function fillServerSelect(selectEl, preferredKey = DEFAULT_USER_SERVER) {
   if (!selectEl) return;
   const pref = normalizePrimaryServer(preferredKey);
   selectEl.innerHTML = '';
-  PRIMARY_SERVER_KEYS.forEach((value, idx) => {
+  PRIMARY_SERVER_KEYS.forEach((value) => {
     if (!MOVIE_EMBED_URL[value] || !TV_EMBED_URL[value]) return;
     const o = document.createElement('option');
     o.value = value;
-    o.textContent = `Server ${idx + 1}`;
+    o.textContent = embedLabel(value);
     selectEl.appendChild(o);
   });
   if (MOVIE_EMBED_URL[pref]) {

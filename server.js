@@ -21,8 +21,15 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
 };
 
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'cross-origin-opener-policy': 'same-origin',
+};
+
 function send(res, statusCode, body, headers = {}) {
-  res.writeHead(statusCode, headers);
+  res.writeHead(statusCode, { ...SECURITY_HEADERS, ...headers });
   res.end(body);
 }
 

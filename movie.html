@@ -35,7 +35,14 @@
       <span class="iframe-loading-spinner"></span>
       <span class="iframe-loading-text">Loading…</span>
     </div>
-    <iframe id="video-frame" title="Movie player" allowfullscreen></iframe>
+    <iframe
+      id="video-frame"
+      title="Movie player"
+      sandbox="allow-scripts allow-same-origin allow-presentation"
+      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+      referrerpolicy="no-referrer"
+      allowfullscreen
+    ></iframe>
   </div>
   <p id="embed-status-text" class="embed-status" aria-live="polite"></p>
 
