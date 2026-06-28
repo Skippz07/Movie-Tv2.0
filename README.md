@@ -38,15 +38,3 @@ API_BASE_URL: '/api/tmdb'
 ```
 
 Do not put the TMDB key back into frontend files.
-
-## Popup and ad containment
-
-The movie and TV players run in sandboxed iframes:
-
-```html
-sandbox="allow-scripts allow-same-origin allow-presentation"
-```
-
-Because `allow-popups` and top-navigation permissions are intentionally omitted, embedded players are not allowed to open new tabs/windows or redirect the main app page. This can contain popups from third-party frames, but it cannot remove ads rendered inside a third-party player itself because browsers isolate cross-origin iframe content.
-
-Vercel security headers are defined in `vercel.json`. Cloudflare Pages can use the same headers from `_headers`. If you put an existing Vercel deployment behind Cloudflare instead, mirror those headers with a Cloudflare Transform Rule or Response Header Modification rule.

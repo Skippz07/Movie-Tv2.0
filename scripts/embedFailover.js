@@ -6,15 +6,6 @@
 import { serverSlotLabel } from './embedProviders.js';
 
 const DEFAULT_ATTEMPT_MS = 13000;
-const PLAYER_SANDBOX = 'allow-scripts allow-same-origin allow-presentation';
-const PLAYER_ALLOW = 'autoplay; encrypted-media; fullscreen; picture-in-picture';
-
-function hardenPlayerFrame(iframe) {
-  iframe.setAttribute('sandbox', PLAYER_SANDBOX);
-  iframe.setAttribute('allow', PLAYER_ALLOW);
-  iframe.setAttribute('referrerpolicy', 'no-referrer');
-  iframe.allowFullscreen = true;
-}
 
 /**
  * @param {HTMLIFrameElement} iframe
@@ -27,8 +18,6 @@ function hardenPlayerFrame(iframe) {
  * @returns {() => void} cancel
  */
 export function playWithFailover(iframe, opts) {
-  hardenPlayerFrame(iframe);
-
   const {
     orderedKeys = [],
     buildUrl,
@@ -100,7 +89,6 @@ export function playWithFailover(iframe, opts) {
       requestAnimationFrame(() => run());
     }, attemptMs);
 
-    hardenPlayerFrame(iframe);
     iframe.src = url;
   }
 
