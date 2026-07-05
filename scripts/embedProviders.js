@@ -6,48 +6,54 @@
 
 /** @type {Record<string, (tmdbId: number) => string>} */
 export const MOVIE_EMBED_URL = {
-  vidsrcpro: (id) => `https://vidsrc.pro/embed/movie/${id}`,
-  vidsrcvip: (id) => `https://vidsrc.vip/embed/movie/${id}`,
+  videasy: (id) =>
+    `https://player.videasy.net/movie/${id}?color=00d4ff&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`,
+  vidup: (id) => `https://vidup.to/movie/${id}`,
+  vidfast: (id) => `https://vidfast.pro/movie/${id}`,
+  vidsrcsu: (id) => `https://vidsrc.su/movie/${id}`,
+  anyembed: (id) => `https://anyembed.xyz/movie/${id}`,
   vidsrc: (id) => `https://vidsrc.vip/embed/movie/${id}`,
   vidsrcin: (id) => `https://vidsrc.in/embed/movie/${id}`,
   vidsrc_to: (id) => `https://vidsrc.to/embed/movie/${id}`,
   vidsrc_cc: (id) => `https://vidsrc.cc/v2/embed/movie/${id}`,
   multiembed: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-  superembed: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
-  autoembed: (id) => `https://player.autoembed.cc/embed/movie/${id}`,
   embedsu: (id) => `https://embed.su/embed/movie/${id}?tmdb=1`,
   embed2: (id) => `https://www.2embed.cc/embed/${id}`,
   vidlink: (id) => `https://vidlink.pro/movie/${id}`,
+  vidcore: (id) => `https://vidcore.net/movie/${id}`,
 };
 
 /** @type {Record<string, (tmdbId: number, s: number, e: number) => string>} */
 export const TV_EMBED_URL = {
-  vidsrcpro: (id, s, e) => `https://vidsrc.pro/embed/tv/${id}/${s}/${e}`,
-  vidsrcvip: (id, s, e) => `https://vidsrc.vip/embed/tv/${id}/${s}/${e}`,
+  videasy: (id, s, e) =>
+    `https://player.videasy.net/tv/${id}/${s}/${e}?color=00d4ff&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`,
+  vidup: (id, s, e) => `https://vidup.to/tv/${id}/${s}/${e}?autoNext=true`,
+  vidfast: (id, s, e) => `https://vidfast.pro/tv/${id}/${s}/${e}`,
+  vidsrcsu: (id, s, e) => `https://vidsrc.su/tv/${id}/${s}/${e}`,
+  anyembed: (id, s, e) => `https://anyembed.xyz/tv/${id}/${s}/${e}`,
   vidsrc: (id, s, e) => `https://vidsrc.icu/embed/tv/${id}/${s}/${e}`,
   vidsrcin: (id, s, e) => `https://vidsrc.in/embed/tv/${id}/${s}/${e}`,
   vidsrc_to: (id, s, e) => `https://vidsrc.to/embed/tv/${id}/${s}/${e}`,
   vidsrc_cc: (id, s, e) => `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`,
   multiembed: (id, s, e) =>
     `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
-  superembed: (id, s, e) =>
-    `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${s}&e=${e}`,
-  autoembed: (id, s, e) =>
-    `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}`,
   embedsu: (id, s, e) =>
     `https://embed.su/embed/tv/${id}/${s}/${e}?tmdb=1`,
   embed2: (id, s, e) =>
     `https://www.2embed.cc/embedtv/${id}?s=${s}&e=${e}`,
   vidlink: (id, s, e) => `https://vidlink.pro/tv/${id}/${s}/${e}`,
+  vidcore: (id, s, e) => `https://vidcore.net/tv/${id}/${s}/${e}`,
 };
 
 /** Primary player providers. The first provider is the default. */
 export const PRIMARY_SERVER_KEYS = [
   'vidlink',
-  'superembed',
-  'vidsrcpro',
-  'vidsrcvip',
-  'autoembed',
+  'vidcore',
+  'videasy',
+  'vidfast',
+  'vidup',
+  'vidsrcsu',
+  'anyembed',
 ];
 
 export const DEFAULT_USER_SERVER = 'vidlink';
@@ -65,18 +71,20 @@ export const FAILOVER_ORDER = [
 ];
 
 const LABELS = {
-  vidsrcpro: 'VidSrc Pro',
-  vidsrcvip: 'VidSrc.Vip',
+  videasy: 'VidEasy',
+  vidup: 'VidUp',
+  vidfast: 'VidFast',
+  vidsrcsu: 'VidSrc SU',
+  anyembed: 'AnyEmbed',
   vidsrc: 'VidSrc',
   vidsrcin: 'Vid.In',
   vidsrc_to: 'VidSrc.to',
   vidsrc_cc: 'VidSrc.cc v2',
   multiembed: 'MultiEmbed',
-  superembed: 'SuperEmbed',
-  autoembed: 'AutoEmbed',
   embedsu: 'Embed.su',
   embed2: '2Embed',
   vidlink: 'VidLink',
+  vidcore: 'VidCore',
 };
 
 export function embedLabel(key) {

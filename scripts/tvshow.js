@@ -14,6 +14,7 @@ const apiKey = CONFIG.API_KEY;
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const PROGRESS_KEY = (tvId) => `tvWatchProgress:${tvId}`;
 const CONTINUE_WATCHING_KEY = 'continueWatching';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 
 const playerState = {
   tvId: null,
@@ -24,9 +25,109 @@ const playerState = {
 };
 
 let cancelFailover = null;
+let hasStartedPlayback = false;
 
 function goHome() {
   window.location.href = 'index.html';
+}
+
+function setPlayerTitle(text) {
+  const el = document.querySelector('.player-title');
+  if (el) el.textContent = text || 'Now Playing';
+}
+
+function renderServerRail(selectEl, onPick) {
+  const rail = document.getElementById('server-rail-list');
+  if (!rail || !selectEl) return;
+  rail.innerHTML = '';
+  const options = Array.from(selectEl.options);
+  options.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'server-rail-button';
+    button.dataset.server = option.value;
+    button.textContent = option.textContent;
+    button.classList.toggle('is-active', option.value === selectEl.value);
+    button.addEventListener('click', () => {
+      selectEl.value = option.value;
+      onPick(option.value);
+    });
+    rail.appendChild(button);
+  });
+  let wheelLock = false;
+  rail.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    if (wheelLock) return;
+    const currentIndex = options.findIndex((option) => option.value === selectEl.value);
+    const nextIndex = Math.max(
+      0,
+      Math.min(options.length - 1, currentIndex + (event.deltaY > 0 ? 1 : -1))
+    );
+    if (nextIndex !== currentIndex && options[nextIndex]) {
+      selectEl.value = options[nextIndex].value;
+      onPick(options[nextIndex].value);
+    }
+    wheelLock = true;
+    window.setTimeout(() => {
+      wheelLock = false;
+    }, 180);
+  }, { passive: false });
+  syncServerRail(selectEl);
+}
+
+function syncServerRail(selectEl) {
+  const buttons = Array.from(document.querySelectorAll('.server-rail-button'));
+  const activeIndex = buttons.findIndex((button) => button.dataset.server === selectEl.value);
+  buttons.forEach((button, index) => {
+    const offset = activeIndex < 0 ? index : index - activeIndex;
+    const clamped = Math.max(-3, Math.min(3, offset));
+    button.style.setProperty('--offset', String(clamped));
+    button.dataset.offset = String(clamped);
+    button.classList.toggle('is-active', offset === 0);
+    button.classList.toggle('is-outer', Math.abs(offset) > 2);
+  });
+}
+
+function pickBestLogo(logos = []) {
+  if (!Array.isArray(logos) || !logos.length) return null;
+  const weighted = logos
+    .filter((logo) => logo?.file_path)
+    .map((logo) => {
+      const language = logo.iso_639_1 || 'null';
+      const languageScore = language === 'en' ? 3 : language === 'null' ? 2 : 1;
+      const voteScore = Number(logo.vote_average || 0);
+      const widthScore = Math.min(Number(logo.width || 0) / 1000, 1);
+      return { logo, score: languageScore * 10 + voteScore + widthScore };
+    })
+    .sort((a, b) => b.score - a.score);
+  return weighted[0]?.logo?.file_path || null;
+}
+
+async function applyTitleLogo(tvId, titleText) {
+  try {
+    const response = await fetch(buildApiUrl(`/tv/${tvId}/images?include_image_language=en,null`));
+    if (!response.ok) return;
+    const data = await response.json();
+    const logoPath = pickBestLogo(data?.logos || []);
+    if (!logoPath) return;
+
+    const title = document.getElementById('title');
+    const details = document.getElementById('details');
+    if (!title || !details) return;
+
+    title.classList.add('has-title-logo');
+    let logo = document.getElementById('title-logo');
+    if (!logo) {
+      logo = document.createElement('img');
+      logo.id = 'title-logo';
+      logo.className = 'detail-title-logo';
+      details.insertBefore(logo, title);
+    }
+    logo.src = `${ORIGINAL_IMAGE_BASE}${logoPath}`;
+    logo.alt = titleText;
+  } catch (error) {
+    console.error('Error fetching TV logo:', error);
+  }
 }
 
 function addContinueWatchingItem(item, type) {
@@ -85,7 +186,18 @@ function writeStoredProgress() {
 }
 
 function populateServerSelect() {
-  fillServerSelect(document.getElementById('server-select'), playerState.server);
+  const serverSelect = document.getElementById('server-select');
+  fillServerSelect(serverSelect, playerState.server);
+  renderServerRail(serverSelect, (server) => {
+    playerState.server = server;
+    writeStoredProgress();
+    syncServerRail(serverSelect);
+    if (hasStartedPlayback) {
+      playEpisode(playerState.season, playerState.episode, {
+        scrollToPlayer: false,
+      });
+    }
+  });
 }
 
 function setIframeLoading(isLoading) {
@@ -116,6 +228,7 @@ function applyShowDetails(show) {
     poster.alt = '';
   }
   document.getElementById('title').textContent = show.name || '';
+  applyTitleLogo(show.id, show.name || 'Series');
   const va = show.vote_average;
   document.getElementById('rating').textContent =
     typeof va === 'number' ? `Rating: ${va.toFixed(1)}` : 'Rating: —';
@@ -185,6 +298,7 @@ function playEpisode(seasonNum, episodeNum, { scrollToPlayer } = { scrollToPlaye
   const e = Number(episodeNum);
   if (!Number.isFinite(s) || !Number.isFinite(e)) return;
 
+  hasStartedPlayback = true;
   cancelFailover?.();
   cancelFailover = null;
 
@@ -219,7 +333,10 @@ function playEpisode(seasonNum, episodeNum, { scrollToPlayer } = { scrollToPlaye
       if (key) {
         playerState.server = key;
         const sel = document.getElementById('server-select');
-        if (sel) sel.value = key;
+        if (sel) {
+          sel.value = key;
+          syncServerRail(sel);
+        }
         writeStoredProgress();
       }
       setIframeLoading(false);
@@ -345,7 +462,10 @@ async function loadSeasonEpisodes(seasonNumber, show, stored) {
 
   populateEpisodeList(episodes);
   const startEp = pickInitialEpisode(stored, episodes);
-  playEpisode(Number(seasonNumber), startEp, { scrollToPlayer: false });
+  playerState.season = Number(seasonNumber);
+  playerState.episode = startEp;
+  setActiveEpisodeRow(startEp);
+  writeStoredProgress();
 }
 
 function wireControls(show) {
@@ -355,9 +475,12 @@ function wireControls(show) {
   serverSelect.addEventListener('change', () => {
     playerState.server = serverSelect.value;
     writeStoredProgress();
-    playEpisode(playerState.season, playerState.episode, {
-      scrollToPlayer: false,
-    });
+    syncServerRail(serverSelect);
+    if (hasStartedPlayback) {
+      playEpisode(playerState.season, playerState.episode, {
+        scrollToPlayer: false,
+      });
+    }
   });
 
   seasonSelect.addEventListener('change', async () => {
@@ -674,6 +797,7 @@ function displayBookmarkedItems() {
 }
 
 document.getElementById('back-button')?.addEventListener('click', goHome);
+document.querySelector('.player-back-button')?.addEventListener('click', goHome);
 
 document.addEventListener('DOMContentLoaded', async () => {
   let selectedItem;
@@ -716,6 +840,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const show = await fetchShow(selectedItem.id);
     playerState.show = show;
     applyShowDetails(show);
+    setPlayerTitle(show.name || selectedItem.name || 'Now Playing');
     markContentReady();
 
     const validSeasons = await fetchSeasonsMeta(selectedItem.id);

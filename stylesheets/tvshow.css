@@ -224,6 +224,25 @@ body, html {
     font-weight: bold;
 }
 
+#details h1.has-title-logo {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.detail-title-logo {
+    display: block;
+    width: min(100%, 520px);
+    max-height: 180px;
+    margin: 0 0 16px;
+    object-fit: contain;
+    object-position: left center;
+    filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.62));
+}
+
 #info-metadata {
     display: flex;
     align-items: center;
@@ -274,6 +293,11 @@ body, html {
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
+.player-topbar,
+.server-rail {
+    display: none;
+}
+
 #iframe-container.iframe-collapsed iframe {
     width: 100%;
     height: 0;
@@ -283,8 +307,19 @@ body, html {
 }
 
 #iframe-container.iframe-active {
-    aspect-ratio: 16 / 9;
-    max-height: 72vh;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    width: 100vw;
+    max-width: none;
+    height: 100vh;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    aspect-ratio: auto;
+    background: #000;
+    box-shadow: none;
 }
 
 #iframe-container.iframe-active iframe {
@@ -293,6 +328,143 @@ body, html {
     min-height: 200px;
     border: none;
     display: block;
+}
+
+#iframe-container.iframe-active .player-topbar {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    right: 228px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.player-back-button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(14px);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.player-back-button:hover {
+    transform: scale(1.05);
+    border-color: rgba(239, 61, 78, 0.48);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.player-title {
+    max-width: min(42vw, 520px);
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+#iframe-container.iframe-active .server-rail {
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    bottom: auto;
+    z-index: 5;
+    display: flex;
+    width: 178px;
+    height: 260px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0;
+    border: 0;
+    border-radius: 22px;
+    background: linear-gradient(90deg, rgba(5, 6, 9, 0.08), rgba(5, 6, 9, 0.46));
+    box-shadow: none;
+    backdrop-filter: blur(10px);
+    opacity: 0.22;
+    transform: translateY(-50%) translateX(calc(100% - 42px));
+    transition: opacity 0.24s ease, transform 0.24s ease, background-color 0.24s ease;
+}
+
+#iframe-container.iframe-active .server-rail:hover,
+#iframe-container.iframe-active .server-rail:focus-within {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+    background: linear-gradient(90deg, rgba(5, 6, 9, 0.18), rgba(5, 6, 9, 0.68));
+}
+
+.server-rail-title {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 12px;
+}
+
+.server-rail-list {
+    position: relative;
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    cursor: ns-resize;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+    mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.server-rail-button {
+    --offset: 0;
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 8px;
+    width: 100%;
+    width: auto;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 14px;
+    color: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.045);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 750;
+    text-align: left;
+    opacity: calc(1 - (max(var(--offset), calc(-1 * var(--offset))) * 0.23));
+    transform:
+        translateY(calc(-50% + (var(--offset) * 50px)))
+        scale(calc(1 - (max(var(--offset), calc(-1 * var(--offset))) * 0.08)));
+    transition: transform 0.22s ease, opacity 0.22s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.server-rail-button:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.server-rail-button.is-active {
+    z-index: 2;
+    color: #fff;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.13), transparent),
+        rgba(239, 61, 78, 0.42);
+    box-shadow: 0 12px 30px rgba(239, 61, 78, 0.18);
+}
+
+.server-rail-button.is-outer {
+    pointer-events: none;
+    opacity: 0;
 }
 
 .iframe-loading {
@@ -304,7 +476,7 @@ body, html {
     justify-content: center;
     gap: 12px;
     background: rgba(0, 0, 0, 0.65);
-    z-index: 1;
+    z-index: 3;
     pointer-events: none;
 }
 
@@ -637,6 +809,13 @@ body, html {
         text-align: center;
     }
 
+    .detail-title-logo {
+        width: min(86vw, 420px);
+        max-height: 128px;
+        margin: 0 auto 14px;
+        object-position: center;
+    }
+
     #info-metadata {
         justify-content: center;
         flex-wrap: wrap;
@@ -674,6 +853,58 @@ body, html {
     #season-select {
         flex: 1;
         min-width: 0;
+    }
+
+    #iframe-container.iframe-active .player-topbar {
+        top: 12px;
+        left: 12px;
+        right: 12px;
+    }
+
+    .player-title {
+        max-width: calc(100vw - 86px);
+    }
+
+    #iframe-container.iframe-active .server-rail {
+        top: auto;
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        width: auto;
+        height: 96px;
+        padding: 8px 0;
+        border-radius: 14px;
+        opacity: 0.38;
+        transform: translateY(calc(100% - 42px));
+    }
+
+    #iframe-container.iframe-active .server-rail:hover,
+    #iframe-container.iframe-active .server-rail:focus-within {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .server-rail-list {
+        cursor: ew-resize;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+    }
+
+    .server-rail-button {
+        top: 50%;
+        left: 50%;
+        right: auto;
+        width: 118px;
+        min-width: 0;
+        min-height: 38px;
+        text-align: center;
+        white-space: nowrap;
+        transform:
+            translate(
+                calc(-50% + (var(--offset) * 124px)),
+                -50%
+            )
+            scale(calc(1 - (max(var(--offset), calc(-1 * var(--offset))) * 0.08)));
     }
 
     #season-episode-selection select {
@@ -715,6 +946,10 @@ body, html {
 
     #details h1 {
         font-size: clamp(1.45rem, 9vw, 2rem);
+    }
+
+    .detail-title-logo {
+        max-height: 104px;
     }
 
     #season-episode-selection select {

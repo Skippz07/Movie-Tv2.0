@@ -14,7 +14,7 @@ const DEFAULT_ATTEMPT_MS = 13000;
  * @param {(key: string) => string | null} opts.buildUrl
  * @param {number} [opts.attemptMs]
  * @param {(text: string) => void} [opts.onStatus]
- * @param {(key: string | null, reason: 'load' | 'exhausted' | 'cancelled') => void} [opts.onResolved]
+ * @param {(key: string | null, reason: 'load' | 'error' | 'timeout' | 'exhausted' | 'cancelled') => void} [opts.onResolved]
  * @returns {() => void} cancel
  */
 export function playWithFailover(iframe, opts) {
@@ -29,6 +29,7 @@ export function playWithFailover(iframe, opts) {
   let cancelled = false;
   let attemptIndex = 0;
   let loadHandler = null;
+  let errorHandler = null;
   let timeoutId = null;
   let activeAttemptId = 0;
 
@@ -40,6 +41,10 @@ export function playWithFailover(iframe, opts) {
     if (loadHandler) {
       iframe.removeEventListener('load', loadHandler);
       loadHandler = null;
+    }
+    if (errorHandler) {
+      iframe.removeEventListener('error', errorHandler);
+      errorHandler = null;
     }
   }
 
@@ -79,7 +84,16 @@ export function playWithFailover(iframe, opts) {
       finish(key, 'load');
     };
 
+    errorHandler = () => {
+      if (cancelled || attemptId !== activeAttemptId) return;
+      cleanupListeners();
+      attemptIndex += 1;
+      iframe.src = 'about:blank';
+      requestAnimationFrame(() => run());
+    };
+
     iframe.addEventListener('load', loadHandler, { once: true });
+    iframe.addEventListener('error', errorHandler, { once: true });
 
     timeoutId = window.setTimeout(() => {
       if (cancelled || attemptId !== activeAttemptId) return;

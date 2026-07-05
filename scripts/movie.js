@@ -11,6 +11,7 @@ import { playWithFailover } from './embedFailover.js';
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const MOVIE_SERVER_KEY = (id) => `movieWatchServer:${id}`;
 const CONTINUE_WATCHING_KEY = 'continueWatching';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 
 function readMovieServer(tmdbId) {
   try {
@@ -54,6 +55,105 @@ function goHome() {
   window.location.href = 'index.html';
 }
 
+function setPlayerTitle(text) {
+  const el = document.querySelector('.player-title');
+  if (el) el.textContent = text || 'Now Playing';
+}
+
+function renderServerRail(selectEl, onPick) {
+  const rail = document.getElementById('server-rail-list');
+  if (!rail || !selectEl) return;
+  rail.innerHTML = '';
+  const options = Array.from(selectEl.options);
+  options.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'server-rail-button';
+    button.dataset.server = option.value;
+    button.textContent = option.textContent;
+    button.classList.toggle('is-active', option.value === selectEl.value);
+    button.addEventListener('click', () => {
+      selectEl.value = option.value;
+      onPick(option.value);
+    });
+    rail.appendChild(button);
+  });
+  let wheelLock = false;
+  rail.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    if (wheelLock) return;
+    const currentIndex = options.findIndex((option) => option.value === selectEl.value);
+    const nextIndex = Math.max(
+      0,
+      Math.min(options.length - 1, currentIndex + (event.deltaY > 0 ? 1 : -1))
+    );
+    if (nextIndex !== currentIndex && options[nextIndex]) {
+      selectEl.value = options[nextIndex].value;
+      onPick(options[nextIndex].value);
+    }
+    wheelLock = true;
+    window.setTimeout(() => {
+      wheelLock = false;
+    }, 180);
+  }, { passive: false });
+  syncServerRail(selectEl);
+}
+
+function syncServerRail(selectEl) {
+  const buttons = Array.from(document.querySelectorAll('.server-rail-button'));
+  const activeIndex = buttons.findIndex((button) => button.dataset.server === selectEl.value);
+  buttons.forEach((button, index) => {
+    const offset = activeIndex < 0 ? index : index - activeIndex;
+    const clamped = Math.max(-3, Math.min(3, offset));
+    button.style.setProperty('--offset', String(clamped));
+    button.dataset.offset = String(clamped);
+    button.classList.toggle('is-active', offset === 0);
+    button.classList.toggle('is-outer', Math.abs(offset) > 2);
+  });
+}
+
+function pickBestLogo(logos = []) {
+  if (!Array.isArray(logos) || !logos.length) return null;
+  const weighted = logos
+    .filter((logo) => logo?.file_path)
+    .map((logo) => {
+      const language = logo.iso_639_1 || 'null';
+      const languageScore = language === 'en' ? 3 : language === 'null' ? 2 : 1;
+      const voteScore = Number(logo.vote_average || 0);
+      const widthScore = Math.min(Number(logo.width || 0) / 1000, 1);
+      return { logo, score: languageScore * 10 + voteScore + widthScore };
+    })
+    .sort((a, b) => b.score - a.score);
+  return weighted[0]?.logo?.file_path || null;
+}
+
+async function applyTitleLogo(movieId, titleText) {
+  try {
+    const response = await fetch(buildApiUrl(`/movie/${movieId}/images?include_image_language=en,null`));
+    if (!response.ok) return;
+    const data = await response.json();
+    const logoPath = pickBestLogo(data?.logos || []);
+    if (!logoPath) return;
+
+    const title = document.getElementById('title');
+    const details = document.getElementById('details');
+    if (!title || !details) return;
+
+    title.classList.add('has-title-logo');
+    let logo = document.getElementById('title-logo');
+    if (!logo) {
+      logo = document.createElement('img');
+      logo.id = 'title-logo';
+      logo.className = 'detail-title-logo';
+      details.insertBefore(logo, title);
+    }
+    logo.src = `${ORIGINAL_IMAGE_BASE}${logoPath}`;
+    logo.alt = titleText;
+  } catch (error) {
+    console.error('Error fetching movie logo:', error);
+  }
+}
+
 function addContinueWatchingItem(item, type) {
   try {
     const current = JSON.parse(localStorage.getItem(CONTINUE_WATCHING_KEY) || '[]');
@@ -86,6 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let cancelFailover = null;
   let currentServer = DEFAULT_SERVER;
+  let hasStartedPlayback = false;
 
   if (!selectedItem) {
     document.getElementById('content').textContent = 'No item selected.';
@@ -102,10 +203,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   currentServer = readMovieServer(selectedItem.id);
   fillServerSelect(serverSelect, currentServer);
+  renderServerRail(serverSelect, (server) => {
+    currentServer = server;
+    writeMovieServer(selectedItem.id, currentServer);
+    syncServerRail(serverSelect);
+    if (hasStartedPlayback) startMoviePlayback();
+  });
 
   displayItemDetails(selectedItem);
+  setPlayerTitle(selectedItem.title || selectedItem.name || 'Now Playing');
 
   function startMoviePlayback() {
+    hasStartedPlayback = true;
     cancelFailover?.();
     cancelFailover = null;
 
@@ -125,6 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           currentServer = key;
           serverSelect.value = key;
           writeMovieServer(selectedItem.id, key);
+          syncServerRail(serverSelect);
         }
         setIframeLoading(false);
         if (reason === 'exhausted') {
@@ -141,24 +251,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   serverSelect.addEventListener('change', () => {
     currentServer = serverSelect.value;
     writeMovieServer(selectedItem.id, currentServer);
-    startMoviePlayback();
+    syncServerRail(serverSelect);
+    if (hasStartedPlayback) startMoviePlayback();
   });
 
   playButton.addEventListener('click', () => {
     infoContainer.style.display = 'none';
+    startMoviePlayback();
     document.getElementById('iframe-container')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
   });
 
-  startMoviePlayback();
-
   await loadActors(selectedItem.id);
   await loadRecommendations(selectedItem.id);
   loadBookmarks();
 
   document.getElementById('back-button')?.addEventListener('click', goHome);
+  document.querySelector('.player-back-button')?.addEventListener('click', goHome);
 });
 
 async function loadActors(movieId) {
@@ -258,6 +369,7 @@ function displayItemDetails(item) {
     poster.alt = '';
   }
   document.getElementById('title').textContent = item.title || item.name;
+  applyTitleLogo(item.id, item.title || item.name || 'Movie');
   document.getElementById('description').textContent =
     item.overview || 'No overview available.';
   document.getElementById('rating').textContent =

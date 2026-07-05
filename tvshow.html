@@ -13,10 +13,18 @@
   <div id="background"></div>
   <button id="back-button" type="button" aria-label="Back">&#8592;</button>
   <div id="iframe-container" class="iframe-collapsed">
+    <div class="player-topbar">
+      <button class="player-back-button" type="button" aria-label="Back to home">&#8592;</button>
+      <span class="player-title">Now Playing</span>
+    </div>
     <div id="iframe-loading" class="iframe-loading hidden" aria-hidden="true">
       <span class="iframe-loading-spinner"></span>
       <span class="iframe-loading-text">Loading…</span>
     </div>
+    <aside class="server-rail" aria-label="Video servers">
+      <span class="server-rail-title">Servers</span>
+      <div id="server-rail-list" class="server-rail-list"></div>
+    </aside>
     <iframe
       id="video-frame"
       title="Episode player"

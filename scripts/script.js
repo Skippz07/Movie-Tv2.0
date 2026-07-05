@@ -12,11 +12,15 @@ let activeBrowseType = 'movie';
 let genreCache = { movie: [], tv: [] };
 
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
 const CONTINUE_WATCHING_KEY = 'continueWatching';
 const PLACEHOLDER_POSTER =
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%23151821"/><text x="50%" y="50%" fill="%238b93a6" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">No poster</text></svg>';
 
 let posterObserver = null;
+let featuredEmblaApi = null;
+let featuredAutoplay = null;
+const logoCache = new Map();
 
 function getPosterObserver() {
     if (posterObserver || !('IntersectionObserver' in window)) return posterObserver;
@@ -66,6 +70,54 @@ function formatYear(item) {
 function ratingLabel(item) {
     const rating = Number(item.vote_average || 0);
     return rating > 0 ? rating.toFixed(1) : 'New';
+}
+
+function titleText(item) {
+    return item.title || item.name || 'Untitled';
+}
+
+function mediaTypeForItem(item, fallback = 'movie') {
+    if (item.media_type === 'movie' || item.media_type === 'tv') return item.media_type;
+    if (item.first_air_date || item.name) return 'tv';
+    if (item.release_date || item.title) return 'movie';
+    return fallback;
+}
+
+function pickBestLogo(logos = []) {
+    if (!Array.isArray(logos) || !logos.length) return null;
+    const weighted = logos
+        .filter(logo => logo?.file_path)
+        .map(logo => {
+            const language = logo.iso_639_1 || 'null';
+            const languageScore = language === 'en' ? 3 : language === 'null' ? 2 : 1;
+            const voteScore = Number(logo.vote_average || 0);
+            const widthScore = Math.min(Number(logo.width || 0) / 1000, 1);
+            return { logo, score: languageScore * 10 + voteScore + widthScore };
+        })
+        .sort((a, b) => b.score - a.score);
+    return weighted[0]?.logo?.file_path || null;
+}
+
+async function fetchTitleLogo(type, id) {
+    const cacheKey = `${type}:${id}`;
+    if (logoCache.has(cacheKey)) return logoCache.get(cacheKey);
+
+    const endpoint = `/${type}/${id}/images?include_image_language=en,null`;
+    const data = await fetchJson(endpoint);
+    const logoPath = pickBestLogo(data?.logos || []);
+    logoCache.set(cacheKey, logoPath);
+    return logoPath;
+}
+
+function createTitleLogoElement(item, logoPath, className = 'title-logo') {
+    if (!logoPath) return null;
+    const img = document.createElement('img');
+    img.className = className;
+    img.src = `${ORIGINAL_IMAGE_BASE}${logoPath}`;
+    img.alt = titleText(item);
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    return img;
 }
 
 document.getElementById('movies-selector').addEventListener('click', async () => {
@@ -374,28 +426,133 @@ async function displayTVShows() {
     renderRow('top-rated-tv', topRatedTV, 'tv');
 }
 
-async function displayFeaturedTrendingTVShow(trendingTV) {
-    if (!Array.isArray(trendingTV) || trendingTV.length === 0) return;
-    const featuredShowContainer = document.getElementById('featured-show');
-    const featuredTitle = document.getElementById('featured-title');
-    const featuredRating = document.getElementById('featured-rating-value');
-    const featuredPopularity = document.getElementById('featured-popularity');
-    const featuredDescription = document.getElementById('featured-description');
+function openFeaturedItem(item) {
+    const type = mediaTypeForItem(item, 'tv');
+    addContinueWatchingItem(item, type);
+    localStorage.setItem('selectedItem', JSON.stringify({ ...item, media_type: type }));
+    window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
+}
 
-    const featuredShow = trendingTV[currentFeaturedIndex];
-    currentFeaturedIndex = (currentFeaturedIndex + 1) % trendingTV.length;
+function createFeaturedSlide(item, logoPath) {
+    const type = mediaTypeForItem(item, 'tv');
+    const slide = document.createElement('article');
+    slide.className = 'embla__slide featured-slide';
+    slide.style.backgroundImage = `url(${ORIGINAL_IMAGE_BASE}${item.backdrop_path || item.poster_path})`;
 
-    featuredShowContainer.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${featuredShow.backdrop_path || featuredShow.poster_path})`;
-    featuredTitle.textContent = featuredShow.name;
-    featuredRating.textContent = Number(featuredShow.vote_average || 0).toFixed(1);
-    featuredPopularity.textContent = `Popularity ${Math.round(featuredShow.popularity || 0)}`;
-    featuredDescription.textContent = featuredShow.overview || 'No overview available.';
+    const content = document.createElement('div');
+    content.className = 'featured-slide__content';
 
-    document.getElementById('play-button').onclick = () => {
-        addContinueWatchingItem(featuredShow, 'tv');
-        localStorage.setItem('selectedItem', JSON.stringify(featuredShow));
-        window.location.href = 'tvshow.html';
-    };
+    const logo = createTitleLogoElement(item, logoPath, 'featured-logo');
+    if (logo) {
+        content.appendChild(logo);
+    } else {
+        const heading = document.createElement('h2');
+        heading.className = 'featured-title';
+        heading.textContent = titleText(item);
+        content.appendChild(heading);
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'featured-meta';
+    meta.innerHTML = `
+        <span><i class="fas fa-star"></i> ${Number(item.vote_average || 0).toFixed(1)}</span>
+        <span>${typeLabel(type)}</span>
+        <span>${formatYear({ ...item, type })}</span>
+        <span>Popularity ${Math.round(item.popularity || 0)}</span>
+    `;
+
+    const description = document.createElement('p');
+    description.className = 'featured-description';
+    description.textContent = item.overview || 'No overview available.';
+
+    const actions = document.createElement('div');
+    actions.className = 'featured-actions';
+
+    const playButton = document.createElement('button');
+    playButton.type = 'button';
+    playButton.className = 'featured-play-button';
+    playButton.innerHTML = '<i class="fas fa-play"></i><span>Play</span>';
+    playButton.addEventListener('click', () => openFeaturedItem(item));
+
+    const detailsButton = document.createElement('button');
+    detailsButton.type = 'button';
+    detailsButton.className = 'featured-details-button';
+    detailsButton.textContent = 'Details';
+    detailsButton.addEventListener('click', () => openFeaturedItem(item));
+
+    actions.appendChild(playButton);
+    actions.appendChild(detailsButton);
+    content.appendChild(meta);
+    content.appendChild(description);
+    content.appendChild(actions);
+    slide.appendChild(content);
+    slide.addEventListener('dblclick', () => openFeaturedItem(item));
+    return slide;
+}
+
+function setFeaturedDotState() {
+    const dots = document.querySelectorAll('#featured-carousel-dots button');
+    const selected = featuredEmblaApi?.selectedScrollSnap() || 0;
+    dots.forEach((dot, index) => {
+        dot.classList.toggle('is-selected', index === selected);
+        dot.setAttribute('aria-current', index === selected ? 'true' : 'false');
+    });
+}
+
+function initFeaturedCarousel() {
+    const root = document.getElementById('featured-show');
+    const viewport = root?.querySelector('.embla__viewport');
+    const prev = root?.querySelector('.embla__button--prev');
+    const next = root?.querySelector('.embla__button--next');
+    const dots = document.getElementById('featured-carousel-dots');
+    if (!root || !viewport || !window.EmblaCarousel) return;
+
+    featuredEmblaApi?.destroy();
+    const plugins = [];
+    if (window.EmblaCarouselAutoplay) {
+        featuredAutoplay = window.EmblaCarouselAutoplay({
+            delay: 5200,
+            stopOnInteraction: false,
+            stopOnMouseEnter: true,
+        });
+        plugins.push(featuredAutoplay);
+    }
+
+    featuredEmblaApi = window.EmblaCarousel(viewport, { loop: true, align: 'start' }, plugins);
+    prev?.addEventListener('click', () => featuredEmblaApi.scrollPrev(), false);
+    next?.addEventListener('click', () => featuredEmblaApi.scrollNext(), false);
+    dots?.querySelectorAll('button').forEach((dot, index) => {
+        dot.addEventListener('click', () => featuredEmblaApi.scrollTo(index), false);
+    });
+    featuredEmblaApi.on('select', setFeaturedDotState);
+    featuredEmblaApi.on('reInit', setFeaturedDotState);
+    setFeaturedDotState();
+}
+
+async function displayFeaturedCarousel(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const track = document.getElementById('featured-carousel-track');
+    const dots = document.getElementById('featured-carousel-dots');
+    if (!track || !dots) return;
+
+    const featuredItems = items
+        .filter(item => item.backdrop_path || item.poster_path)
+        .slice(0, 8);
+    const logos = await Promise.all(
+        featuredItems.map(item => fetchTitleLogo(mediaTypeForItem(item, 'tv'), item.id))
+    );
+
+    track.innerHTML = '';
+    dots.innerHTML = '';
+    featuredItems.forEach((item, index) => {
+        track.appendChild(createFeaturedSlide(item, logos[index]));
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.setAttribute('aria-label', `Go to featured title ${index + 1}`);
+        dots.appendChild(dot);
+    });
+
+    initFeaturedCarousel();
 }
 
 async function displayTrendingTVShowsList() {
@@ -444,10 +601,7 @@ async function displayTrendingTVShowsList() {
         trendingTVListContainer.appendChild(card);
     });
 
-    displayFeaturedTrendingTVShow(trendingTV);
-    setInterval(() => {
-        displayFeaturedTrendingTVShow(trendingTV);
-    }, 5000);
+    await displayFeaturedCarousel(trendingTV);
 }
 
 function populateYearFilter() {
