@@ -1,3 +1,4 @@
+import { detailUrl, selectedTitle, titleMetadata } from './site.js';
 import CONFIG from './config.js';
 import {
   buildTvEmbedUrl,
@@ -14,7 +15,7 @@ const apiKey = CONFIG.API_KEY;
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const PROGRESS_KEY = (tvId) => `tvWatchProgress:${tvId}`;
 const CONTINUE_WATCHING_KEY = 'continueWatching';
-const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 const playerState = {
   tvId: null,
@@ -26,6 +27,7 @@ const playerState = {
 
 let cancelFailover = null;
 let hasStartedPlayback = false;
+let wakePlayerChrome = null;
 
 function goHome() {
   window.location.href = 'index.html';
@@ -86,6 +88,34 @@ function syncServerRail(selectEl) {
     button.classList.toggle('is-active', offset === 0);
     button.classList.toggle('is-outer', Math.abs(offset) > 2);
   });
+}
+
+function setupPlayerChromeIdle() {
+  const shell = document.getElementById('iframe-container');
+  if (!shell) return null;
+  let idleTimer = null;
+
+  const showChrome = () => {
+    shell.classList.remove('is-player-idle');
+    window.clearTimeout(idleTimer);
+    if (!shell.classList.contains('iframe-active')) return;
+    idleTimer = window.setTimeout(() => {
+      shell.classList.add('is-player-idle');
+    }, 2600);
+  };
+
+  ['mousemove', 'mousedown', 'touchstart', 'keydown', 'focusin'].forEach((eventName) => {
+    shell.addEventListener(eventName, showChrome, { passive: true });
+  });
+
+  shell.addEventListener('mouseleave', () => {
+    if (shell.classList.contains('iframe-active')) {
+      shell.classList.add('is-player-idle');
+    }
+  });
+
+  shell.addEventListener('mouseenter', showChrome);
+  return showChrome;
 }
 
 function pickBestLogo(logos = []) {
@@ -217,7 +247,7 @@ function applyShowDetails(show) {
   const bg = document.getElementById('background');
   const path = show.backdrop_path || show.poster_path;
   if (path) {
-    bg.style.backgroundImage = `url(https://image.tmdb.org/t/p/original${path})`;
+    bg.style.backgroundImage = `url(https://image.tmdb.org/t/p/w1280${path})`;
   }
   const poster = document.getElementById('poster');
   if (show.poster_path) {
@@ -312,6 +342,7 @@ function playEpisode(seasonNum, episodeNum, { scrollToPlayer } = { scrollToPlaye
   setEmbedStatusLine('Loading player…');
   setIframeLoading(true);
   expandPlayerShell(true);
+  wakePlayerChrome?.();
 
   if (infoContainer) {
     infoContainer.style.display = 'none';
@@ -511,6 +542,7 @@ function populateActors(actors) {
     actorItem.className = 'actor-item';
 
     const actorImage = document.createElement('img');
+    actorImage.width = 185; actorImage.height = 278; actorImage.decoding = 'async';
     if (actor.profile_path) {
       actorImage.src = `https://image.tmdb.org/t/p/w185${actor.profile_path}`;
     }
@@ -539,12 +571,14 @@ function populateRecommendations(recommendations) {
 
   (recommendations || []).slice(0, 12).forEach((recommendation) => {
     const mediaType = recommendation.media_type || 'tv';
-    const recommendationItem = document.createElement('div');
+    const recommendationItem = document.createElement('a');
+    recommendationItem.href = detailUrl(mediaType, recommendation.id);
     recommendationItem.className = 'recommendation-item';
     recommendationItem.dataset.id = recommendation.id;
     recommendationItem.dataset.type = mediaType;
 
     const recommendationImage = document.createElement('img');
+    recommendationImage.width = 342; recommendationImage.height = 513; recommendationImage.decoding = 'async';
     if (recommendation.poster_path) {
       recommendationImage.src = `https://image.tmdb.org/t/p/w342${recommendation.poster_path}`;
     }
@@ -557,6 +591,12 @@ function populateRecommendations(recommendations) {
     recommendationTitle.textContent = recommendation.name || '';
 
     const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
     bookmarkIcon.addEventListener('click', (event) =>
       toggleBookmark(event, recommendation.id, mediaType)
@@ -568,7 +608,6 @@ function populateRecommendations(recommendations) {
 
     recommendationItem.addEventListener('click', () => {
       localStorage.setItem('selectedItem', JSON.stringify(recommendation));
-      window.location.href = mediaType === 'tv' ? 'tvshow.html' : 'movie.html';
     });
 
     recommendationsList.appendChild(recommendationItem);
@@ -638,7 +677,8 @@ function setupLazySections(tvId) {
 }
 
 function toggleBookmark(event, itemId, itemType) {
-  event.stopPropagation();
+  event.preventDefault();
+    event.stopPropagation();
 
   const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
   const index = bookmarks.findIndex(
@@ -734,12 +774,14 @@ function buildApiUrl(endpoint) {
 }
 
 function createCard(item, type) {
-  const card = document.createElement('div');
+  const card = document.createElement('a');
+    card.href = detailUrl(type, item.id);
   card.classList.add('card');
   card.dataset.id = item.id;
   card.dataset.type = type;
 
   const poster = document.createElement('img');
+    poster.width = 500; poster.height = 750;
   if (item.poster_path) {
     poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
   }
@@ -758,6 +800,12 @@ function createCard(item, type) {
   card.appendChild(title);
 
   const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
   bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
   bookmarkIcon.addEventListener('click', (event) =>
     toggleBookmark(event, item.id, type)
@@ -773,7 +821,6 @@ function createCard(item, type) {
 
   card.addEventListener('click', () => {
     localStorage.setItem('selectedItem', JSON.stringify(item));
-    window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
   });
 
   return card;
@@ -800,17 +847,13 @@ document.getElementById('back-button')?.addEventListener('click', goHome);
 document.querySelector('.player-back-button')?.addEventListener('click', goHome);
 
 document.addEventListener('DOMContentLoaded', async () => {
-  let selectedItem;
-  try {
-    selectedItem = JSON.parse(localStorage.getItem('selectedItem'));
-  } catch {
-    selectedItem = null;
-  }
+  wakePlayerChrome = setupPlayerChromeIdle();
+  const selectedItem = await selectedTitle('tv');
 
   const content = document.getElementById('content');
 
   if (!selectedItem) {
-    if (content) content.textContent = 'No item selected.';
+    if (content) content.innerHTML = '<h1>Title unavailable</h1><p>This title could not be loaded. Check your connection and try again.</p><a href="/index.html">Browse titles</a>';
     return;
   }
 
@@ -840,6 +883,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const show = await fetchShow(selectedItem.id);
     playerState.show = show;
     applyShowDetails(show);
+    titleMetadata(show, 'tv');
     setPlayerTitle(show.name || selectedItem.name || 'Now Playing');
     markContentReady();
 

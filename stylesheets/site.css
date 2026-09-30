@@ -1,0 +1,54 @@
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-padding-top: 24px; }
+body { overflow-wrap: break-word; }
+img { max-width: 100%; }
+a { color: inherit; }
+a.card, a.recommendation-item, a.trending-card { text-decoration: none; }
+:focus-visible { outline: 3px solid #27d1b4; outline-offset: 4px; }
+#slider input { display: block; position: absolute; width: 1px; height: 1px; opacity: 0; }
+#movies-selector:focus-visible ~ label[for="movies-selector"], #tv-selector:focus-visible ~ label[for="tv-selector"] { outline: 2px solid #27d1b4; outline-offset: -2px; }
+.skip-link { position: fixed; top: -100px; left: 16px; z-index: 10000; padding: 12px 20px; background: #fff; color: #111; }
+.skip-link:focus { top: 16px; }
+.site-footer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 24px; padding: 32px 20px; color: #b9c0ca; font: 14px system-ui; }
+.site-footer a, .site-footer button { padding: 12px; min-height: 44px; }
+.site-footer button { background: #25252b; color: white; border: 1px solid #555; border-radius: 6px; cursor: pointer; }
+.featured-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.featured-slide::before, .featured-slide::after { z-index: 1; pointer-events: none; }
+.featured-slide__content { position: relative; z-index: 2; }
+.featured-title, .featured-logo { height: 160px; max-height: 160px; margin-bottom: 18px; object-fit: contain; }
+.featured-title { font-size: 2.75rem; line-height: 1.15; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.featured-details-button { text-decoration: none; }
+/* Override intrinsic HTML heights so resized artwork keeps its intended shape. */
+#poster { height: auto; aspect-ratio: 2 / 3; object-fit: cover; object-position: center 30%; align-self: flex-start; flex-shrink: 0; }
+.card img, .recommendation-item img { display: block; height: auto; aspect-ratio: 2 / 3; object-fit: cover; object-position: center 30%; }
+.actor-item img { height: auto; aspect-ratio: 1; object-fit: cover; }
+.card:has(.card-info)::after { display: block; inset: 20% 0 0; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .65) 48%, #050506 100%); }
+.card .card-info { position: absolute; inset: auto 0 0; padding: 28px 10px 10px; gap: 6px; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .85)); min-height: 0; }
+.card .title { min-height: 0; text-shadow: 0 2px 8px #000; }
+.card:has(.card-info) .play-button { top: 28%; }
+.card-skeleton { min-height: 0; }
+.skeleton-poster-tile { aspect-ratio: 2 / 3; }
+.skeleton-card-info { position: absolute; inset: auto 12px 12px; padding: 0; min-height: 0; }
+.recommendation-item { align-self: flex-start; overflow: hidden; border-radius: 8px; }
+.recommendation-title { position: absolute; inset: auto 0 0; margin: 0; padding: 32px 10px 10px; text-align: left; font-weight: 700; line-height: 1.3; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .95)); text-shadow: 0 2px 8px #000; overflow-wrap: anywhere; }
+.skeleton-poster { height: auto; aspect-ratio: 2 / 3; }
+#details, #content, .controls-row, .filter-field { min-width: 0; }
+body:has(.auth-shell) { overflow: auto; min-height: 100svh; }
+@media (max-width: 600px) {
+  input, select, textarea { font-size: 16px !important; }
+  button, select { min-height: 44px; }
+  .grid-container, .search-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+  .grid-container .card, .search-results-grid .card { width: 100%; min-width: 0; }
+  #details h1 { font-size: 1.75rem; }
+  .featured-title { font-size: 2rem; }
+  .featured-title, .featured-logo { height: 112px; max-height: 112px; }
+  .controls-row { flex-wrap: wrap; }
+  #season-episode-selection, #server-selection { max-width: 100%; }
+  #actors-list, #recommendations-list { max-width: 100%; }
+  header { flex-wrap: wrap; }
+  .site-footer { gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

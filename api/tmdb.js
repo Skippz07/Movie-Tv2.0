@@ -14,6 +14,11 @@ function applyQueryParams(targetUrl, query) {
 }
 
 export default async function handler(req, res) {
+  if (!['GET', 'HEAD'].includes(req.method)) {
+    res.setHeader('Allow', 'GET, HEAD');
+    res.status(405).json({ error: 'Method not allowed.' });
+    return;
+  }
   const apiKey = process.env.TMDB_API_KEY;
 
   if (!apiKey) {
@@ -22,7 +27,7 @@ export default async function handler(req, res) {
   }
 
   const tmdbPath = typeof req.query.path === 'string' ? req.query.path : '';
-  if (!tmdbPath.startsWith('/')) {
+  if (!/^\/(movie|tv|search|trending|genre)\/[a-zA-Z0-9_/-]+$/.test(tmdbPath)) {
     res.status(400).json({ error: 'Missing TMDB path.' });
     return;
   }
@@ -32,13 +37,13 @@ export default async function handler(req, res) {
   targetUrl.searchParams.set('api_key', apiKey);
 
   try {
-    const tmdbResponse = await fetch(targetUrl);
+    const tmdbResponse = await fetch(targetUrl, { signal: AbortSignal.timeout(12000) });
     const contentType =
       tmdbResponse.headers.get('content-type') || 'application/json; charset=utf-8';
     const body = await tmdbResponse.text();
 
     res.setHeader('content-type', contentType);
-    res.setHeader('cache-control', 's-maxage=300, stale-while-revalidate=600');
+    res.setHeader('cache-control', tmdbResponse.ok ? 's-maxage=300, stale-while-revalidate=600' : 'no-store');
     res.status(tmdbResponse.status).send(body);
   } catch (error) {
     res.status(502).json({

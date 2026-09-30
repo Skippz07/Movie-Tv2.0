@@ -1,0 +1,6 @@
+{
+  "name": "flix",
+  "private": true,
+  "scripts": { "build": "node tools/build.cjs", "start": "node tools/build.cjs && node server.js", "test": "node tools/verify.cjs" },
+  "engines": { "node": ">=22" }
+}

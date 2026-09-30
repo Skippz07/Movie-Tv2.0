@@ -67,9 +67,8 @@ header {
   position: sticky;
   top: 0;
   z-index: 50;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
+  width: 100%;
+  margin: 0;
   padding: 28px clamp(24px, 2.55vw, 42px);
   background: linear-gradient(180deg, rgba(7, 7, 10, 0.94), rgba(7, 7, 10, 0.78));
   border-bottom: 1px solid var(--line);

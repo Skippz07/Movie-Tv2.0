@@ -1,3 +1,4 @@
+import { detailUrl } from './site.js';
 import CONFIG from './config.js';
 
 const apiBaseURL = CONFIG.API_BASE_URL;
@@ -73,12 +74,14 @@ function buildApiUrl(endpoint) {
 }
 
 function createCard(item, type) {
-    const card = document.createElement('div');
+    const card = document.createElement('a');
+    card.href = detailUrl(type, item.id);
     card.classList.add('card');
     card.dataset.id = item.id;
     card.dataset.type = type;
 
     const poster = document.createElement('img');
+    poster.width = 500; poster.height = 750;
     poster.src = item.poster_path ? `${IMAGE_BASE}${item.poster_path}` : PLACEHOLDER_POSTER;
     poster.alt = item.title || item.name || 'Poster';
     poster.loading = 'lazy';
@@ -109,25 +112,31 @@ function createCard(item, type) {
     card.appendChild(info);
 
     const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon', 'bookmarked');
     bookmarkIcon.addEventListener('click', (event) => toggleBookmark(event, item.id, type));
     card.appendChild(bookmarkIcon);
 
     card.addEventListener('click', () => {
         localStorage.setItem('selectedItem', JSON.stringify(item));
-        window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
     });
 
     return card;
 }
 
 function toggleBookmark(event, itemId, itemType) {
+    event.preventDefault();
     event.stopPropagation(); // Prevent triggering the card click event
 
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
     const index = bookmarks.findIndex(item => item.id === itemId && item.type === itemType);
-    const itemDetails = event.currentTarget.parentNode; 
-    const itemName = itemDetails.querySelector('.title').textContent; 
+    const itemDetails = event.currentTarget.parentNode;
+    const itemName = itemDetails.querySelector('.title').textContent;
 
     if (index !== -1) {
         // Remove bookmark

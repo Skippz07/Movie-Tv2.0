@@ -9,7 +9,9 @@ function checkPasscode() {
         localStorage.setItem('userPasscode', inputPasscode);
 
         // Redirect to the main site
-        window.location.href = "index.html";
+        const next = new URLSearchParams(location.search).get('next');
+        const target = new URL(next || '/index.html', location.origin);
+        window.location.href = target.origin === location.origin && /^\/(index|movie|tvshow|saved)\.html$/.test(target.pathname) ? target.href : '/index.html';
     } else {
         // Show an error message
         errorMessage.classList.remove('is-visible');
@@ -23,7 +25,7 @@ function verifyAccess() {
     const storedPasscode = localStorage.getItem('userPasscode');
 
     if (storedPasscode !== SECRET_PASSCODE) {
-        window.location.href = "passcode.html";
+        window.location.replace('passcode.html?next=' + encodeURIComponent(location.pathname + location.search));
     }
 }
 

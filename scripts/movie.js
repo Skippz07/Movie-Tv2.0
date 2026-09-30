@@ -1,3 +1,4 @@
+import { detailUrl, selectedTitle, titleMetadata } from './site.js';
 import CONFIG from './config.js';
 import {
   buildMovieEmbedUrl,
@@ -11,7 +12,7 @@ import { playWithFailover } from './embedFailover.js';
 const DEFAULT_SERVER = DEFAULT_USER_SERVER;
 const MOVIE_SERVER_KEY = (id) => `movieWatchServer:${id}`;
 const CONTINUE_WATCHING_KEY = 'continueWatching';
-const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
 function readMovieServer(tmdbId) {
   try {
@@ -112,6 +113,34 @@ function syncServerRail(selectEl) {
   });
 }
 
+function setupPlayerChromeIdle() {
+  const shell = document.getElementById('iframe-container');
+  if (!shell) return null;
+  let idleTimer = null;
+
+  const showChrome = () => {
+    shell.classList.remove('is-player-idle');
+    window.clearTimeout(idleTimer);
+    if (!shell.classList.contains('iframe-active')) return;
+    idleTimer = window.setTimeout(() => {
+      shell.classList.add('is-player-idle');
+    }, 2600);
+  };
+
+  ['mousemove', 'mousedown', 'touchstart', 'keydown', 'focusin'].forEach((eventName) => {
+    shell.addEventListener(eventName, showChrome, { passive: true });
+  });
+
+  shell.addEventListener('mouseleave', () => {
+    if (shell.classList.contains('iframe-active')) {
+      shell.classList.add('is-player-idle');
+    }
+  });
+
+  shell.addEventListener('mouseenter', showChrome);
+  return showChrome;
+}
+
 function pickBestLogo(logos = []) {
   if (!Array.isArray(logos) || !logos.length) return null;
   const weighted = logos
@@ -172,12 +201,7 @@ function addContinueWatchingItem(item, type) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  let selectedItem;
-  try {
-    selectedItem = JSON.parse(localStorage.getItem('selectedItem'));
-  } catch {
-    selectedItem = null;
-  }
+  const selectedItem = await selectedTitle('movie');
 
   const videoFrame = document.getElementById('video-frame');
   const playButton = document.getElementById('play-button');
@@ -187,9 +211,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let cancelFailover = null;
   let currentServer = DEFAULT_SERVER;
   let hasStartedPlayback = false;
+  const wakePlayerChrome = setupPlayerChromeIdle();
 
   if (!selectedItem) {
-    document.getElementById('content').textContent = 'No item selected.';
+    document.getElementById('content').innerHTML = '<h1>Title unavailable</h1><p>This title could not be loaded. Check your connection and try again.</p><a href="/index.html">Browse titles</a>';
     document.getElementById('back-button')?.addEventListener('click', goHome);
     return;
   }
@@ -211,6 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   displayItemDetails(selectedItem);
+  titleMetadata(selectedItem, 'movie');
   setPlayerTitle(selectedItem.title || selectedItem.name || 'Now Playing');
 
   function startMoviePlayback() {
@@ -221,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setEmbedStatusLine('Loading player…');
     setIframeLoading(true);
     expandPlayerShell(true);
+    wakePlayerChrome?.();
 
     const orderedKeys = getFailoverOrder(serverSelect.value || currentServer);
 
@@ -264,8 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  await loadActors(selectedItem.id);
-  await loadRecommendations(selectedItem.id);
+  await Promise.allSettled([loadActors(selectedItem.id), loadRecommendations(selectedItem.id)]);
   loadBookmarks();
 
   document.getElementById('back-button')?.addEventListener('click', goHome);
@@ -291,6 +317,7 @@ function populateActorsList(actors) {
     actorItem.className = 'actor-item';
 
     const actorImage = document.createElement('img');
+    actorImage.width = 185; actorImage.height = 278; actorImage.decoding = 'async';
     actorImage.src = `https://image.tmdb.org/t/p/w500${actor.profile_path}`;
     actorImage.alt = actor.name;
     actorImage.loading = 'lazy';
@@ -320,12 +347,14 @@ function populateRecommendationsList(recommendations) {
   const recommendationsList = document.getElementById('recommendations-list');
   recommendationsList.innerHTML = '';
   recommendations.forEach((item) => {
-    const recommendationItem = document.createElement('div');
+    const recommendationItem = document.createElement('a');
+    recommendationItem.href = detailUrl(item.media_type || 'movie', item.id);
     recommendationItem.className = 'recommendation-item';
     recommendationItem.dataset.id = item.id;
     recommendationItem.dataset.type = 'movie';
 
     const recommendationImage = document.createElement('img');
+    recommendationImage.width = 342; recommendationImage.height = 513; recommendationImage.decoding = 'async';
     recommendationImage.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
     recommendationImage.alt = item.title || item.name;
     recommendationImage.loading = 'lazy';
@@ -335,6 +364,12 @@ function populateRecommendationsList(recommendations) {
     recommendationTitle.textContent = item.title || item.name;
 
     const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
     bookmarkIcon.addEventListener('click', (event) =>
       toggleBookmark(event, item.id, 'movie')
@@ -348,7 +383,6 @@ function populateRecommendationsList(recommendations) {
 
     recommendationItem.addEventListener('click', () => {
       localStorage.setItem('selectedItem', JSON.stringify(item));
-      window.location.href = 'movie.html';
     });
   });
 
@@ -358,7 +392,7 @@ function populateRecommendationsList(recommendations) {
 function displayItemDetails(item) {
   const imagePath = item.backdrop_path || item.poster_path;
   if (imagePath) {
-    document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/original${imagePath})`;
+    document.getElementById('background').style.backgroundImage = `url(https://image.tmdb.org/t/p/w1280${imagePath})`;
   }
   const poster = document.getElementById('poster');
   if (item.poster_path) {
@@ -382,7 +416,8 @@ function displayItemDetails(item) {
 }
 
 function toggleBookmark(event, itemId, itemType) {
-  event.stopPropagation();
+  event.preventDefault();
+    event.stopPropagation();
 
   const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
   const index = bookmarks.findIndex(
@@ -462,11 +497,13 @@ function buildApiUrl(endpoint) {
 }
 
 function createCard(item, type) {
-  const card = document.createElement('div');
+  const card = document.createElement('a');
+    card.href = detailUrl(type, item.id);
   card.classList.add('card');
   card.dataset.id = item.id;
   card.dataset.type = type;
   const poster = document.createElement('img');
+    poster.width = 500; poster.height = 750;
   if (item.poster_path) {
     poster.src = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
   }
@@ -482,6 +519,12 @@ function createCard(item, type) {
   title.textContent = item.title || item.name;
   card.appendChild(title);
   const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
   bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
   bookmarkIcon.addEventListener('click', (event) =>
     toggleBookmark(event, item.id, type)
@@ -489,7 +532,6 @@ function createCard(item, type) {
   card.appendChild(bookmarkIcon);
   card.addEventListener('click', () => {
     localStorage.setItem('selectedItem', JSON.stringify(item));
-    window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
   });
   return card;
 }

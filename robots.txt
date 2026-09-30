@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /saved.html
+Disallow: /passcode.html
+Disallow: /offline.html
+
+Sitemap: https://shows4u.vercel.app/sitemap.xml

@@ -1,3 +1,4 @@
+import { detailUrl } from './site.js';
 import CONFIG from './config.js';
 
 const apiBaseURL = CONFIG.API_BASE_URL;
@@ -12,7 +13,7 @@ let activeBrowseType = 'movie';
 let genreCache = { movie: [], tv: [] };
 
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/original';
+const ORIGINAL_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 const CONTINUE_WATCHING_KEY = 'continueWatching';
 const PLACEHOLDER_POSTER =
     'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%23151821"/><text x="50%" y="50%" fill="%238b93a6" font-family="Arial, sans-serif" font-size="30" text-anchor="middle">No poster</text></svg>';
@@ -153,6 +154,8 @@ async function fetchData(endpoint) {
         return data.results;
     } catch (error) {
         console.error('Failed to fetch data:', error);
+        const notice = document.getElementById('catalog-error');
+        if (notice) notice.hidden = false;
         return [];
     }
 }
@@ -214,12 +217,14 @@ function renderRow(containerId, items, type) {
 }
 
 function createCard(item, type) {
-    const card = document.createElement('div');
+    const card = document.createElement('a');
+    card.href = detailUrl(type, item.id);
     card.classList.add('card');
     card.dataset.id = item.id;
     card.dataset.type = type;
 
     const poster = document.createElement('img');
+    poster.width = 500; poster.height = 750;
     poster.alt = item.title || item.name || 'Poster';
     prepareLazyPoster(poster, item.poster_path);
     card.appendChild(poster);
@@ -256,8 +261,14 @@ function createCard(item, type) {
     card.appendChild(info);
 
     const bookmarkIcon = document.createElement('i');
+    bookmarkIcon.setAttribute('role', 'button');
+    bookmarkIcon.tabIndex = 0;
+    bookmarkIcon.setAttribute('aria-label', 'Toggle saved title');
+    bookmarkIcon.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); bookmarkIcon.click(); }
+    });
     bookmarkIcon.classList.add('fas', 'fa-bookmark', 'bookmark-icon');
-    
+
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
     if (bookmarks.some(bookmark => bookmark.id === item.id && bookmark.type === type)) {
         bookmarkIcon.classList.add('bookmarked');
@@ -269,7 +280,6 @@ function createCard(item, type) {
     card.addEventListener('click', () => {
         addContinueWatchingItem(item, type);
         localStorage.setItem('selectedItem', JSON.stringify(item));
-        window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
     });
 
     return card;
@@ -318,12 +328,13 @@ function displayContinueWatching() {
 
 
 function toggleBookmark(event, itemId, itemType) {
+    event.preventDefault();
     event.stopPropagation(); // Prevent triggering the card click event
 
     const bookmarks = JSON.parse(localStorage.getItem('bookmarks')) || [];
     const index = bookmarks.findIndex(item => item.id === itemId && item.type === itemType);
-    const itemDetails = event.currentTarget.parentNode; 
-    const itemName = itemDetails.querySelector('.title').textContent; 
+    const itemDetails = event.currentTarget.parentNode;
+    const itemName = itemDetails.querySelector('.title').textContent;
 
     if (index !== -1) {
         // Remove bookmark
@@ -430,14 +441,23 @@ function openFeaturedItem(item) {
     const type = mediaTypeForItem(item, 'tv');
     addContinueWatchingItem(item, type);
     localStorage.setItem('selectedItem', JSON.stringify({ ...item, media_type: type }));
-    window.location.href = type === 'tv' ? 'tvshow.html' : 'movie.html';
+    window.location.href = detailUrl(type, item.id);
 }
 
-function createFeaturedSlide(item, logoPath) {
+function createFeaturedSlide(item, logoPath, index = 0) {
     const type = mediaTypeForItem(item, 'tv');
     const slide = document.createElement('article');
     slide.className = 'embla__slide featured-slide';
-    slide.style.backgroundImage = `url(${ORIGINAL_IMAGE_BASE}${item.backdrop_path || item.poster_path})`;
+    const backdrop = document.createElement('img');
+    backdrop.className = 'featured-backdrop'; backdrop.alt = '';
+    backdrop.width = 1280; backdrop.height = 720;
+    const imagePath = item.backdrop_path || item.poster_path;
+    backdrop.src = 'https://image.tmdb.org/t/p/w1280' + imagePath;
+    backdrop.srcset = 'https://image.tmdb.org/t/p/w780' + imagePath + ' 780w, https://image.tmdb.org/t/p/w1280' + imagePath + ' 1280w';
+    backdrop.sizes = '(max-width: 680px) 100vw, 75vw';
+    backdrop.loading = index === 0 ? 'eager' : 'lazy';
+    backdrop.fetchPriority = index === 0 ? 'high' : 'low';
+    backdrop.decoding = 'async'; slide.append(backdrop);
 
     const content = document.createElement('div');
     content.className = 'featured-slide__content';
@@ -474,11 +494,10 @@ function createFeaturedSlide(item, logoPath) {
     playButton.innerHTML = '<i class="fas fa-play"></i><span>Play</span>';
     playButton.addEventListener('click', () => openFeaturedItem(item));
 
-    const detailsButton = document.createElement('button');
-    detailsButton.type = 'button';
+    const detailsButton = document.createElement('a');
+    detailsButton.href = detailUrl(type, item.id);
     detailsButton.className = 'featured-details-button';
     detailsButton.textContent = 'Details';
-    detailsButton.addEventListener('click', () => openFeaturedItem(item));
 
     actions.appendChild(playButton);
     actions.appendChild(detailsButton);
@@ -509,7 +528,7 @@ function initFeaturedCarousel() {
 
     featuredEmblaApi?.destroy();
     const plugins = [];
-    if (window.EmblaCarouselAutoplay) {
+    if (window.EmblaCarouselAutoplay && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         featuredAutoplay = window.EmblaCarouselAutoplay({
             delay: 5200,
             stopOnInteraction: false,
@@ -538,14 +557,12 @@ async function displayFeaturedCarousel(items) {
     const featuredItems = items
         .filter(item => item.backdrop_path || item.poster_path)
         .slice(0, 8);
-    const logos = await Promise.all(
-        featuredItems.map(item => fetchTitleLogo(mediaTypeForItem(item, 'tv'), item.id))
-    );
+
 
     track.innerHTML = '';
     dots.innerHTML = '';
     featuredItems.forEach((item, index) => {
-        track.appendChild(createFeaturedSlide(item, logos[index]));
+        track.appendChild(createFeaturedSlide(item, null, index));
         const dot = document.createElement('button');
         dot.type = 'button';
         dot.setAttribute('aria-label', `Go to featured title ${index + 1}`);
@@ -553,18 +570,28 @@ async function displayFeaturedCarousel(items) {
     });
 
     initFeaturedCarousel();
+    // Render the hero before requesting optional title artwork.
+    featuredItems.forEach(async (item, index) => {
+        const logoPath = await fetchTitleLogo(mediaTypeForItem(item, 'tv'), item.id);
+        const heading = track.children[index]?.querySelector('.featured-title');
+        const logo = createTitleLogoElement(item, logoPath, 'featured-logo');
+        if (heading && logo) heading.replaceWith(logo);
+    });
 }
 
 async function displayTrendingTVShowsList() {
     const trendingTV = await fetchData('/trending/tv/day?');
+    document.getElementById('featured-container').hidden = !trendingTV.length;
     const trendingTVListContainer = document.getElementById('trending-tv-list');
     trendingTVListContainer.innerHTML = '';
 
     trendingTV.forEach(tvShow => {
-        const card = document.createElement('div');
+        const card = document.createElement('a');
+        card.href = detailUrl('tv', tvShow.id);
         card.classList.add('card');
 
         const poster = document.createElement('img');
+    poster.width = 500; poster.height = 750;
         poster.alt = tvShow.name || 'Poster';
         prepareLazyPoster(poster, tvShow.poster_path);
         card.appendChild(poster);
@@ -595,7 +622,6 @@ async function displayTrendingTVShowsList() {
         card.addEventListener('click', () => {
             addContinueWatchingItem(tvShow, 'tv');
             localStorage.setItem('selectedItem', JSON.stringify(tvShow));
-            window.location.href = 'tvshow.html';
         });
 
         trendingTVListContainer.appendChild(card);
@@ -823,9 +849,8 @@ document.querySelectorAll('.search-filter').forEach(button => {
 document.addEventListener('DOMContentLoaded', async () => {
     setupBrowseFilters();
     displayContinueWatching();
-    await displayMovies();
-    await displayTVShows();
-    await displayTrendingTVShowsList();
+    const initialRows = Promise.allSettled([displayMovies(), displayTrendingTVShowsList()]);
+    await initialRows;
     loadBookmarks(); // Ensure this is called after the cards are created
 
     // Add event listeners for scrolling arrows
